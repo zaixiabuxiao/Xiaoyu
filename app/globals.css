@@ -62,4 +62,17 @@
     background-repeat: repeat-x;
     height: 3px;
   }
+
+  .pixel-input {
+    @apply w-full bg-cream border-3 border-navy text-navy text-lg px-3 py-2 outline-none;
+  }
+
+  .pixel-input:focus {
+    box-shadow: 3px 3px 0 0 #e8743b;
+  }
+
+  .pixel-textarea {
+    @apply pixel-input resize-none;
+    min-height: 4.5rem;
+  }
 }

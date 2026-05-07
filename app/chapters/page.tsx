@@ -1,6 +1,6 @@
 import PixelHeader from "@/components/PixelHeader";
 import PixelCard from "@/components/PixelCard";
-import LifeChapterCard from "@/components/LifeChapterCard";
+import ChaptersList from "@/components/ChaptersList";
 import { getActiveVolume, lifeChapters } from "@/lib/mock-data";
 
 const categoryFilters = [
@@ -75,13 +75,7 @@ export default function ChaptersPage() {
         </div>
       </section>
 
-      <ul className="space-y-3">
-        {chapters.map((chapter) => (
-          <li key={chapter.id}>
-            <LifeChapterCard chapter={chapter} />
-          </li>
-        ))}
-      </ul>
+      <ChaptersList chapters={chapters} />
     </div>
   );
 }

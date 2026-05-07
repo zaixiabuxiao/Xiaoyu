@@ -2,8 +2,9 @@ import PixelHeader from "@/components/PixelHeader";
 import PixelCard from "@/components/PixelCard";
 import ProgressGrid100 from "@/components/ProgressGrid100";
 import TodayModeSelector from "@/components/TodayModeSelector";
-import LifeChapterCard from "@/components/LifeChapterCard";
-import MemoryTimelineCard from "@/components/MemoryTimelineCard";
+import TodayRecordPanel from "@/components/TodayRecordPanel";
+import RecommendedChapterAction from "@/components/RecommendedChapterAction";
+import RecentMemoryPreview from "@/components/RecentMemoryPreview";
 import FeatherDivider from "@/components/FeatherDivider";
 import {
   chapterVolumes,
@@ -21,7 +22,7 @@ export default function HomePage() {
   const recommended = lifeChapters.find(
     (c) => c.id === todayRecord.recommendedChapterId,
   );
-  const recentMemory = getCompletedChapters(activeVolume.id)[0];
+  const fallbackRecent = getCompletedChapters(activeVolume.id)[0];
 
   return (
     <div className="space-y-5">
@@ -31,6 +32,8 @@ export default function HomePage() {
         subtitle="让平凡的日子，也长出被记住的羽毛。"
         showMascot
       />
+
+      <TodayRecordPanel />
 
       <PixelCard variant="orange">
         <p className="font-pixel text-[10px] tracking-widest text-warm-orange">
@@ -68,7 +71,7 @@ export default function HomePage() {
       {recommended ? (
         <section>
           <h2 className="font-pixel text-xs mb-2">为今天推荐</h2>
-          <LifeChapterCard chapter={recommended} />
+          <RecommendedChapterAction chapter={recommended} />
         </section>
       ) : null}
 
@@ -85,12 +88,10 @@ export default function HomePage() {
         </PixelCard>
       </section>
 
-      {recentMemory ? (
-        <section>
-          <h2 className="font-pixel text-xs mb-2">最近的一段</h2>
-          <MemoryTimelineCard chapter={recentMemory} />
-        </section>
-      ) : null}
+      <section>
+        <h2 className="font-pixel text-xs mb-2">最近的一段</h2>
+        <RecentMemoryPreview fallback={fallbackRecent} />
+      </section>
 
       <p className="font-pixel text-[10px] text-navy/60 text-center pt-2">
         共 {chapterVolumes.length} 卷 · 当前在第{activeVolume.number}卷
