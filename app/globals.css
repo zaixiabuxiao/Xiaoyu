@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-cream: #fbf3e2;
+    --color-navy: #1b2a4e;
+    --color-warm-orange: #e8743b;
+  }
+
+  html,
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-navy);
+    font-family: var(--font-body), ui-monospace, "Courier New", monospace;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: grayscale;
+    image-rendering: pixelated;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-pixel), "Press Start 2P", monospace;
+    letter-spacing: 0.02em;
+  }
+}
+
+@layer components {
+  .pixel-card {
+    @apply bg-white border-3 border-navy rounded-none p-4;
+    box-shadow: 4px 4px 0 0 #1b2a4e;
+  }
+
+  .pixel-card-orange {
+    @apply bg-cream border-3 border-warm-orange rounded-none p-4;
+    box-shadow: 4px 4px 0 0 #e8743b;
+  }
+
+  .pixel-button {
+    @apply inline-block px-4 py-2 bg-warm-orange text-cream border-3 border-navy font-pixel text-sm;
+    box-shadow: 3px 3px 0 0 #1b2a4e;
+    transition: transform 80ms steps(2, end), box-shadow 80ms steps(2, end);
+  }
+
+  .pixel-button:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 0 #1b2a4e;
+  }
+
+  .pixel-divider {
+    background-image: linear-gradient(
+      to right,
+      #1b2a4e 0,
+      #1b2a4e 8px,
+      transparent 8px,
+      transparent 16px
+    );
+    background-size: 16px 3px;
+    background-repeat: repeat-x;
+    height: 3px;
+  }
+}
