@@ -1,24 +1,49 @@
-import PageHeader from "@/components/PageHeader";
+import PixelHeader from "@/components/PixelHeader";
+import PixelCard from "@/components/PixelCard";
+import MemoryTimelineCard from "@/components/MemoryTimelineCard";
+import { getCompletedChapters } from "@/lib/mock-data";
+
+const tabs = ["时间线", "相册", "地图", "年度回顾"];
 
 export default function MemoriesPage() {
+  const completed = getCompletedChapters();
+
   return (
-    <div className="space-y-4">
-      <PageHeader title="回忆" subtitle="MEMORIES" />
+    <div className="space-y-5">
+      <PixelHeader
+        eyebrow="MEMORIES"
+        title="我们的回忆"
+        subtitle="一段段被认真留下来的日子。"
+      />
 
-      <section className="pixel-card-orange">
-        <p className="text-xl">那些值得反复翻阅的小瞬间。</p>
-      </section>
-
-      <div className="grid grid-cols-2 gap-3">
-        {[1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className="pixel-card aspect-square flex items-center justify-center"
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {tabs.map((tab, i) => (
+          <span
+            key={tab}
+            className={`border-3 px-3 py-1 font-pixel text-[10px] whitespace-nowrap ${
+              i === 0
+                ? "bg-navy text-cream border-navy"
+                : "bg-white text-navy border-navy shadow-pixel-sm"
+            }`}
           >
-            <span className="font-pixel text-xs">#{i.toString().padStart(2, "0")}</span>
-          </div>
+            {tab}
+          </span>
         ))}
       </div>
+
+      {completed.length === 0 ? (
+        <PixelCard>
+          <p className="text-lg">还没有记录，慢慢来。</p>
+        </PixelCard>
+      ) : (
+        <ul className="space-y-4">
+          {completed.map((chapter) => (
+            <li key={chapter.id}>
+              <MemoryTimelineCard chapter={chapter} />
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
