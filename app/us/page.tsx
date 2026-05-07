@@ -31,7 +31,7 @@ export default function UsPage() {
 
       <PixelCard>
         <div className="flex items-center gap-3">
-          <YangMascot size={56} />
+          <YangMascot size="md" />
           <div>
             <p className="font-pixel text-[10px] tracking-widest text-warm-orange">
               小羽 & 扬扬
@@ -80,6 +80,15 @@ export default function UsPage() {
       <section>
         <h2 className="font-pixel text-xs mb-2">本地数据</h2>
         <LocalDataPanel />
+      </section>
+
+      <section>
+        <h2 className="font-pixel text-xs mb-2">添加到手机主屏幕</h2>
+        <PixelCard variant="ghost">
+          <p className="text-lg leading-snug">
+            在 iPhone Safari 中打开后，点击分享按钮，选择「添加到主屏幕」，就可以像 App 一样使用。
+          </p>
+        </PixelCard>
       </section>
 
       <section>

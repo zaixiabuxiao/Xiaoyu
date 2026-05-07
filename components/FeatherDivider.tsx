@@ -1,8 +1,37 @@
+"use client";
+
+import { useState } from "react";
+
 type Props = {
   className?: string;
 };
 
 export default function FeatherDivider({ className = "" }: Props) {
+  const [errored, setErrored] = useState(false);
+
+  if (errored) {
+    return <CssFallback className={className} />;
+  }
+
+  return (
+    <div
+      className={`flex items-center justify-center ${className}`}
+      aria-hidden="true"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/brand/feather-divider.png"
+        alt=""
+        height={16}
+        className="block w-full max-w-[240px]"
+        style={{ imageRendering: "pixelated", height: "16px" }}
+        onError={() => setErrored(true)}
+      />
+    </div>
+  );
+}
+
+function CssFallback({ className }: { className: string }) {
   return (
     <div
       className={`flex items-center gap-2 text-warm-orange ${className}`}

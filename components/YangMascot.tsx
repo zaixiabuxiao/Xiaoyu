@@ -1,9 +1,49 @@
+"use client";
+
+import { useState } from "react";
+
+export type YangMascotSize = "sm" | "md" | "lg";
+
+const dimensions: Record<YangMascotSize, number> = {
+  sm: 32,
+  md: 64,
+  lg: 96,
+};
+
+const sources: Record<YangMascotSize, string> = {
+  sm: "/brand/yang-mascot-small.png",
+  md: "/brand/yang-mascot.png",
+  lg: "/brand/yang-mascot.png",
+};
+
 type Props = {
-  size?: number;
+  size?: YangMascotSize;
   className?: string;
 };
 
-export default function YangMascot({ size = 48, className = "" }: Props) {
+export default function YangMascot({ size = "md", className = "" }: Props) {
+  const [errored, setErrored] = useState(false);
+  const px = dimensions[size];
+
+  if (errored) {
+    return <SvgFallback size={px} className={className} />;
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={sources[size]}
+      alt="羽扬"
+      width={px}
+      height={px}
+      className={`inline-block align-middle ${className}`}
+      style={{ imageRendering: "pixelated" }}
+      onError={() => setErrored(true)}
+    />
+  );
+}
+
+function SvgFallback({ size, className }: { size: number; className: string }) {
   return (
     <svg
       width={size}

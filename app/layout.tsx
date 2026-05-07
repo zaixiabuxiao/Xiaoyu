@@ -19,7 +19,24 @@ const vt323 = VT323({
 
 export const metadata: Metadata = {
   title: "羽扬日记",
-  description: "小羽与扬扬的私密日记",
+  description: "让平凡的日子，也长出被记住的羽毛。",
+  manifest: "/manifest.json",
+  applicationName: "羽扬日记",
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "羽扬",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export const viewport: Viewport = {
