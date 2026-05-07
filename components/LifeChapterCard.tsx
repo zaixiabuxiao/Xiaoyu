@@ -1,8 +1,10 @@
+import type { ReactNode } from "react";
 import type { LifeChapter, ChapterStatus } from "@/lib/mock-data";
 
 type Props = {
   chapter: LifeChapter;
   compact?: boolean;
+  children?: ReactNode;
 };
 
 const statusStyles: Record<ChapterStatus, string> = {
@@ -12,7 +14,7 @@ const statusStyles: Record<ChapterStatus, string> = {
   想再来一次: "bg-navy text-cream border-navy",
 };
 
-export default function LifeChapterCard({ chapter, compact = false }: Props) {
+export default function LifeChapterCard({ chapter, compact = false, children }: Props) {
   return (
     <article className="bg-white border-3 border-navy shadow-pixel p-4">
       <div className="flex items-start justify-between gap-3">
@@ -48,6 +50,12 @@ export default function LifeChapterCard({ chapter, compact = false }: Props) {
             </div>
           ) : null}
         </>
+      ) : null}
+
+      {children ? (
+        <div className="mt-3 pt-3 border-t-3 border-dashed border-navy/30">
+          {children}
+        </div>
       ) : null}
     </article>
   );

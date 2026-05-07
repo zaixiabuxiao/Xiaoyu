@@ -2,6 +2,7 @@ import PixelHeader from "@/components/PixelHeader";
 import PixelCard from "@/components/PixelCard";
 import FeatherDivider from "@/components/FeatherDivider";
 import YangMascot from "@/components/YangMascot";
+import LocalDataPanel from "@/components/LocalDataPanel";
 import { chapterVolumes } from "@/lib/mock-data";
 
 const lifestyle = [
@@ -75,6 +76,11 @@ export default function UsPage() {
       </section>
 
       <FeatherDivider />
+
+      <section>
+        <h2 className="font-pixel text-xs mb-2">本地数据</h2>
+        <LocalDataPanel />
+      </section>
 
       <section>
         <h2 className="font-pixel text-xs mb-2">章节卷</h2>
