@@ -9,6 +9,7 @@ import {
 import { useLocalRecords } from "@/lib/use-local-records";
 import PixelCard from "./PixelCard";
 import PixelButton from "./PixelButton";
+import YangMascot from "./YangMascot";
 import RecordChapterDialog from "./RecordChapterDialog";
 import RecordChapterForm, { type RecordPayload } from "./RecordChapterForm";
 
@@ -80,17 +81,22 @@ export default function TodayRecordPanel() {
         </PixelCard>
       ) : (
         <PixelCard>
-          <p className="font-pixel text-[10px] tracking-widest text-warm-orange">
-            今天 · {today}
-          </p>
-          <p className="font-pixel text-xs mt-1">今天这一页，还空着</p>
-          <p className="text-lg mt-2 leading-snug">
-            想到一件想被记住的事了吗？先轻轻写下来。
-          </p>
-          <div className="mt-3">
-            <PixelButton type="button" onClick={() => setOpen(true)}>
-              写下今天这一件
-            </PixelButton>
+          <div className="flex items-start gap-3">
+            <YangMascot size="sm" className="mt-1" />
+            <div className="min-w-0">
+              <p className="font-pixel text-[10px] tracking-widest text-warm-orange">
+                今天 · {today}
+              </p>
+              <p className="font-pixel text-xs mt-1">今天这一页，还空着</p>
+              <p className="text-lg mt-2 leading-snug">
+                想到一件想被记住的事了吗？先轻轻写下来。
+              </p>
+              <div className="mt-3">
+                <PixelButton type="button" onClick={() => setOpen(true)}>
+                  写下今天这一件
+                </PixelButton>
+              </div>
+            </div>
           </div>
         </PixelCard>
       )}

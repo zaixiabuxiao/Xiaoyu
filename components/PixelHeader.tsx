@@ -33,7 +33,7 @@ export default function PixelHeader({
             <p className="text-xl mt-2 leading-snug">{subtitle}</p>
           ) : null}
         </div>
-        {showMascot ? <YangMascot size={56} /> : rightSlot}
+        {showMascot ? <YangMascot size="md" /> : rightSlot}
       </div>
       <FeatherDivider className="mt-3" />
     </header>
