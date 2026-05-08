@@ -109,4 +109,73 @@
     background-size: 2px 10px;
     background-repeat: repeat-y;
   }
+
+  .diary-banner {
+    @apply inline-flex items-center justify-center text-cream font-display text-base px-5 py-1.5 border-2 border-navy rounded-lg whitespace-nowrap;
+    background-color: #e8743b;
+    box-shadow:
+      inset 0 -3px 0 0 #c66a2f,
+      inset 0 2px 0 0 #f6b07a,
+      0 2px 0 0 #8a431d;
+  }
+
+  .diary-banner-tab {
+    @apply diary-banner;
+    border-radius: 8px 8px 6px 6px;
+    min-width: 144px;
+    max-width: 168px;
+    min-height: 46px;
+    padding: 6px 18px;
+  }
+
+  .diary-pbtn {
+    @apply inline-flex items-center justify-center gap-1.5 text-cream font-display border-2 border-navy rounded-lg cursor-pointer select-none whitespace-nowrap min-h-[44px] px-4 py-2 text-base;
+    background-color: #e8743b;
+    box-shadow:
+      inset 0 -3px 0 0 #c66a2f,
+      inset 0 2px 0 0 #f6b07a,
+      0 3px 0 0 #8a431d;
+    transition: transform 0.06s ease, box-shadow 0.06s ease;
+  }
+
+  .diary-pbtn:active {
+    transform: translateY(2px);
+    box-shadow:
+      inset 0 -1px 0 0 #c66a2f,
+      inset 0 2px 0 0 #f6b07a,
+      0 1px 0 0 #8a431d;
+  }
+
+  .diary-pbtn-small {
+    @apply diary-pbtn text-sm px-3 py-1.5 min-h-[36px];
+  }
+
+  .diary-pbar {
+    @apply relative h-3.5 overflow-hidden border-2 border-navy rounded;
+    background-color: #f5dba6;
+    box-shadow: inset 0 2px 0 0 rgba(28, 42, 74, 0.12);
+  }
+
+  .diary-pbar > span {
+    @apply block h-full;
+    background: linear-gradient(180deg, #f3b06f 0%, #e8743b 50%, #c66a2f 100%);
+    box-shadow:
+      inset 0 -3px 0 0 #c66a2f,
+      inset 0 2px 0 0 #f6b07a;
+  }
+
+  .diary-page-title {
+    @apply font-display text-[26px] text-navy leading-none tracking-wide whitespace-nowrap;
+    text-shadow:
+      2px 0 0 #fbe8c4,
+      -2px 0 0 #fbe8c4,
+      0 2px 0 #fbe8c4,
+      0 -2px 0 #fbe8c4,
+      3px 3px 0 rgba(28, 42, 74, 0.06);
+  }
+
+  .diary-quote-box {
+    @apply text-center font-display leading-snug border-2 border-navy rounded text-navy px-3 py-2;
+    background-color: #fffbe9;
+  }
 }
