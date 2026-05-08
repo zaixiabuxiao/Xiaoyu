@@ -23,11 +23,23 @@ export type DailyRecord = {
   createdAt: string;
 };
 
+export type AlbumPhoto = {
+  id: string;
+  photo: string;
+  date?: string;
+  location?: string;
+  note?: string;
+  createdAt: string;
+  timezone: LosAngelesTimezone;
+};
+
 const RECORDS_KEY = "life_daily_records_v1";
 const PLANNED_KEY = "life_planned_chapters_v1";
+const ALBUM_KEY = "life_album_photos_v1";
 
 const RECORDS_EVENT = "life-records-changed";
 const PLANNED_EVENT = "life-planned-changed";
+const ALBUM_EVENT = "life-album-changed";
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -209,7 +221,73 @@ export function exportDailyRecordsAsText(): string {
   return lines.join("\n");
 }
 
+function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function normalizeAlbumPhoto(raw: Partial<AlbumPhoto> & { photo: string }): AlbumPhoto {
+  return {
+    id: raw.id ?? generateId(),
+    photo: raw.photo,
+    date: raw.date,
+    location: raw.location,
+    note: raw.note,
+    createdAt: raw.createdAt ?? new Date().toISOString(),
+    timezone: LA_TIMEZONE,
+  };
+}
+
+export function getAlbumPhotos(): AlbumPhoto[] {
+  const raw = read<Array<Partial<AlbumPhoto> & { photo: string }>>(
+    ALBUM_KEY,
+    [],
+  );
+  return raw
+    .filter((entry) => typeof entry?.photo === "string" && entry.photo.length > 0)
+    .map(normalizeAlbumPhoto);
+}
+
+export function saveAlbumPhoto(
+  input: Omit<AlbumPhoto, "id" | "createdAt" | "timezone"> & {
+    id?: string;
+    createdAt?: string;
+  },
+): AlbumPhoto {
+  const photos = getAlbumPhotos();
+  const next: AlbumPhoto = {
+    id: input.id ?? generateId(),
+    photo: input.photo,
+    date: input.date && input.date.trim().length > 0 ? input.date : undefined,
+    location:
+      input.location && input.location.trim().length > 0
+        ? input.location
+        : undefined,
+    note: input.note && input.note.trim().length > 0 ? input.note : undefined,
+    createdAt: input.createdAt ?? new Date().toISOString(),
+    timezone: LA_TIMEZONE,
+  };
+  photos.push(next);
+  write(ALBUM_KEY, photos);
+  notify(ALBUM_EVENT);
+  return next;
+}
+
+export function deleteAlbumPhoto(id: string): void {
+  const next = getAlbumPhotos().filter((p) => p.id !== id);
+  write(ALBUM_KEY, next);
+  notify(ALBUM_EVENT);
+}
+
+export function clearAlbumPhotos(): void {
+  write(ALBUM_KEY, []);
+  notify(ALBUM_EVENT);
+}
+
 export const STORAGE_EVENTS = {
   records: RECORDS_EVENT,
   planned: PLANNED_EVENT,
+  album: ALBUM_EVENT,
 } as const;

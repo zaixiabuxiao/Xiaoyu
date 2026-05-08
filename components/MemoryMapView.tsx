@@ -1,22 +1,58 @@
 "use client";
 
 import { useMemo } from "react";
-import type { DailyRecord } from "@/lib/local-records";
+import type { AlbumPhoto, DailyRecord } from "@/lib/local-records";
 import { formatDateForDisplay } from "@/lib/date-utils";
 import { useLocalRecords } from "@/lib/use-local-records";
 import DiaryCard from "./DiaryCard";
 import { PixelPin } from "./PixelIcons";
 
-export default function MemoryMapView() {
-  const { records, hydrated } = useLocalRecords();
+type MapItem = {
+  source: "daily" | "album";
+  id: string;
+  photo?: string;
+  sortDate: string;
+  displayDate?: string;
+  title?: string;
+  note?: string;
+  location: string;
+};
 
-  const withLocation = useMemo(
-    () =>
-      records
-        .filter((r) => r.location && r.location.trim().length > 0)
-        .sort((a, b) => b.date.localeCompare(a.date)),
-    [records],
+function buildItems(
+  records: DailyRecord[],
+  album: AlbumPhoto[],
+): MapItem[] {
+  const dailyItems: MapItem[] = records
+    .filter((r) => r.location && r.location.trim().length > 0)
+    .map((r) => ({
+      source: "daily",
+      id: `daily-${r.date}`,
+      photo: r.photos[0],
+      sortDate: r.date,
+      displayDate: formatDateForDisplay(r.date),
+      title: r.title,
+      note: r.note,
+      location: r.location!,
+    }));
+  const albumItems: MapItem[] = album
+    .filter((p) => p.location && p.location.trim().length > 0)
+    .map((p) => ({
+      source: "album",
+      id: p.id,
+      photo: p.photo,
+      sortDate: p.date ?? p.createdAt.slice(0, 10),
+      displayDate: p.date ? formatDateForDisplay(p.date) : undefined,
+      note: p.note,
+      location: p.location!,
+    }));
+  return [...dailyItems, ...albumItems].sort((a, b) =>
+    b.sortDate.localeCompare(a.sortDate),
   );
+}
+
+export default function MemoryMapView() {
+  const { records, album, hydrated } = useLocalRecords();
+  const items = useMemo(() => buildItems(records, album), [records, album]);
 
   if (!hydrated) {
     return (
@@ -26,7 +62,7 @@ export default function MemoryMapView() {
     );
   }
 
-  if (withLocation.length === 0) {
+  if (items.length === 0) {
     return (
       <DiaryCard variant="soft">
         <p className="font-display text-[16px] text-navy leading-snug">
@@ -40,12 +76,12 @@ export default function MemoryMapView() {
     );
   }
 
-  const byLocation = new Map<string, DailyRecord[]>();
-  for (const r of withLocation) {
-    const key = r.location ?? "";
-    const arr = byLocation.get(key) ?? [];
-    arr.push(r);
-    byLocation.set(key, arr);
+  // Group by location for an "atlas" feel
+  const byLocation = new Map<string, MapItem[]>();
+  for (const item of items) {
+    const arr = byLocation.get(item.location) ?? [];
+    arr.push(item);
+    byLocation.set(item.location, arr);
   }
 
   return (
@@ -65,11 +101,11 @@ export default function MemoryMapView() {
             <div className="dash-h my-3" />
             <ul className="space-y-3">
               {rs.map((r) => (
-                <li key={r.date} className="flex gap-3">
-                  {r.photos[0] ? (
+                <li key={`${r.source}-${r.id}`} className="flex gap-3">
+                  {r.photo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={r.photos[0]}
+                      src={r.photo}
                       alt=""
                       className="shrink-0 w-16 h-16 object-cover border-2 border-navy bg-cream"
                       style={{ imageRendering: "auto" }}
@@ -80,12 +116,31 @@ export default function MemoryMapView() {
                     </span>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="font-pixel text-[10px] text-diary-orange-d">
-                      {formatDateForDisplay(r.date)}
-                    </p>
-                    <p className="font-display text-[14px] leading-snug text-navy mt-0.5 break-words">
-                      {r.title}
-                    </p>
+                    <div className="flex items-baseline gap-2">
+                      {r.displayDate ? (
+                        <p className="font-pixel text-[10px] text-diary-orange-d">
+                          {r.displayDate}
+                        </p>
+                      ) : (
+                        <p className="font-pixel text-[10px] text-diary-ink-soft">
+                          未注明日期
+                        </p>
+                      )}
+                      <span
+                        className={`font-pixel text-[8px] tracking-widest px-1.5 py-0.5 border ${
+                          r.source === "album"
+                            ? "bg-cream text-navy border-navy"
+                            : "bg-warm-orange text-cream border-navy"
+                        }`}
+                      >
+                        {r.source === "album" ? "相册照片" : "日记照片"}
+                      </span>
+                    </div>
+                    {r.title ? (
+                      <p className="font-display text-[14px] leading-snug text-navy mt-0.5 break-words">
+                        {r.title}
+                      </p>
+                    ) : null}
                     {r.note ? (
                       <p className="text-[12px] text-diary-ink-soft mt-1 line-clamp-2 leading-snug">
                         {r.note}
