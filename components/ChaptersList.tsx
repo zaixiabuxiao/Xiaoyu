@@ -83,7 +83,7 @@ export default function ChaptersList({ chapters }: Props) {
       setError(null);
     } catch (e) {
       if (e instanceof DailyRecordExistsError) {
-        setError("今天已经写过一件了，剩下的明天再来。");
+        setError("今天已经写过一页了，剩下的明天再来。");
       } else {
         setError("保存失败，请稍后再试。");
       }
