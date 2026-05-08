@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { LifeChapter } from "@/lib/mock-data";
+import { useMemo, useState } from "react";
+import type { LifeChapter, ChapterStatus } from "@/lib/mock-data";
 import {
   addPlannedChapter,
   removePlannedChapter,
@@ -10,8 +10,7 @@ import {
   DailyRecordExistsError,
 } from "@/lib/local-records";
 import { useLocalRecords } from "@/lib/use-local-records";
-import LifeChapterCard from "./LifeChapterCard";
-import PixelButton from "./PixelButton";
+import ChapterListItem from "./ChapterListItem";
 import RecordChapterDialog from "./RecordChapterDialog";
 import RecordChapterForm, { type RecordPayload } from "./RecordChapterForm";
 
@@ -19,8 +18,46 @@ type Props = {
   chapters: LifeChapter[];
 };
 
+const CATEGORY_FILTERS: { label: string; match: string | null }[] = [
+  { label: "全部", match: null },
+  { label: "宅家", match: "宅家日常" },
+  { label: "外出", match: "外出约会" },
+  { label: "旅行", match: "旅行探索" },
+  { label: "家庭", match: "家庭建设" },
+  { label: "宝宝预备", match: "未来宝宝预备" },
+  { label: "沟通", match: "沟通与修复" },
+  { label: "信仰", match: "信仰与价值观" },
+  { label: "未来", match: "未来梦想" },
+];
+
+type StatusFilterId = "全部" | "想做" | "计划中" | "已记录" | "想再来一次";
+
+const STATUS_FILTERS: StatusFilterId[] = [
+  "全部",
+  "想做",
+  "计划中",
+  "已记录",
+  "想再来一次",
+];
+
+function matchesStatus(
+  filter: StatusFilterId,
+  chapter: LifeChapter,
+  planned: boolean,
+): boolean {
+  if (filter === "全部") return true;
+  if (filter === "计划中")
+    return planned || chapter.status === "计划中";
+  if (filter === "想做") {
+    return chapter.status === "想做" && !planned;
+  }
+  return chapter.status === (filter as ChapterStatus);
+}
+
 export default function ChaptersList({ chapters }: Props) {
   const { records, planned, hydrated } = useLocalRecords();
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilterId>("全部");
   const [recordingChapter, setRecordingChapter] = useState<LifeChapter | null>(
     null,
   );
@@ -28,6 +65,16 @@ export default function ChaptersList({ chapters }: Props) {
 
   const today = getTodayString();
   const todayRecord = records.find((r) => r.date === today);
+  const plannedSet = useMemo(() => new Set(planned), [planned]);
+
+  const filtered = useMemo(() => {
+    return chapters.filter((c) => {
+      if (categoryFilter && c.category !== categoryFilter) return false;
+      const isPlanned = plannedSet.has(c.id);
+      if (!matchesStatus(statusFilter, c, isPlanned)) return false;
+      return true;
+    });
+  }, [chapters, categoryFilter, statusFilter, plannedSet]);
 
   function handleSave(payload: RecordPayload) {
     try {
@@ -45,36 +92,47 @@ export default function ChaptersList({ chapters }: Props) {
 
   return (
     <>
-      <ul className="space-y-3">
-        {chapters.map((chapter) => {
-          const isPlanned = planned.includes(chapter.id);
-          const isCompleted = chapter.status === "已记录";
-          return (
+      <CategoryFilters
+        active={categoryFilter}
+        onChange={setCategoryFilter}
+      />
+
+      <StatusFilters active={statusFilter} onChange={setStatusFilter} />
+
+      {!hydrated ? (
+        <p className="font-pixel text-[10px] text-navy/50 px-1">…</p>
+      ) : null}
+
+      {filtered.length === 0 ? (
+        <p className="text-[14px] text-diary-ink-soft text-center py-6">
+          这一类还空着，先翻一翻别的章节吧。
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {filtered.map((chapter) => (
             <li key={chapter.id}>
-              <LifeChapterCard chapter={chapter}>
-                {isCompleted ? (
-                  <p className="font-pixel text-[10px] text-navy/60">
-                    已经写过了。
-                  </p>
-                ) : (
-                  <ChapterActions
-                    hydrated={hydrated}
-                    isPlanned={isPlanned}
-                    todayRecorded={Boolean(todayRecord)}
-                    onPlan={() => addPlannedChapter(chapter.id)}
-                    onUnplan={() => removePlannedChapter(chapter.id)}
-                    onRecord={() => setRecordingChapter(chapter)}
-                  />
-                )}
-              </LifeChapterCard>
+              <ChapterListItem
+                chapter={chapter}
+                planned={plannedSet.has(chapter.id)}
+                todayRecorded={Boolean(todayRecord)}
+                onPlan={(c) => addPlannedChapter(c.id)}
+                onUnplan={(c) => removePlannedChapter(c.id)}
+                onRecord={(c) => setRecordingChapter(c)}
+                onView={() => {
+                  /* viewing a written chapter is handled in /memories */
+                }}
+              />
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
+      )}
 
       <RecordChapterDialog
         open={Boolean(recordingChapter)}
-        onClose={() => setRecordingChapter(null)}
+        onClose={() => {
+          setRecordingChapter(null);
+          setError(null);
+        }}
       >
         {recordingChapter ? (
           <>
@@ -84,7 +142,10 @@ export default function ChaptersList({ chapters }: Props) {
               volumeId={recordingChapter.volumeId}
               chapterTitle={recordingChapter.title}
               onSave={handleSave}
-              onCancel={() => setRecordingChapter(null)}
+              onCancel={() => {
+                setRecordingChapter(null);
+                setError(null);
+              }}
             />
             {error ? (
               <p className="font-pixel text-[10px] text-warm-orange mt-2">
@@ -98,48 +159,64 @@ export default function ChaptersList({ chapters }: Props) {
   );
 }
 
-function ChapterActions({
-  hydrated,
-  isPlanned,
-  todayRecorded,
-  onPlan,
-  onUnplan,
-  onRecord,
+function CategoryFilters({
+  active,
+  onChange,
 }: {
-  hydrated: boolean;
-  isPlanned: boolean;
-  todayRecorded: boolean;
-  onPlan: () => void;
-  onUnplan: () => void;
-  onRecord: () => void;
+  active: string | null;
+  onChange: (next: string | null) => void;
 }) {
-  if (!hydrated) {
-    return <p className="font-pixel text-[10px] text-navy/60">…</p>;
-  }
-
   return (
-    <div className="flex flex-wrap gap-2 items-center">
-      {isPlanned ? (
-        <>
-          <span className="font-pixel text-[10px] text-warm-orange border-2 border-navy bg-cream px-2 py-1">
-            ✓ 已加入计划
-          </span>
-          <PixelButton type="button" variant="ghost" onClick={onUnplan}>
-            移出计划
-          </PixelButton>
-        </>
-      ) : (
-        <PixelButton type="button" variant="soft" onClick={onPlan}>
-          先放进想做的那一页
-        </PixelButton>
-      )}
-      {todayRecorded ? (
-        <span className="font-pixel text-[10px] text-navy/70">明天再写</span>
-      ) : (
-        <PixelButton type="button" onClick={onRecord}>
-          今天就写这件
-        </PixelButton>
-      )}
+    <div className="-mx-4 px-4 overflow-x-auto no-scroll">
+      <div className="flex items-center gap-2 pb-1">
+        {CATEGORY_FILTERS.map((f) => {
+          const isActive = active === f.match;
+          return (
+            <button
+              key={f.label}
+              type="button"
+              onClick={() => onChange(f.match)}
+              className={`shrink-0 font-display text-[13px] px-3 py-1 border-2 rounded-md whitespace-nowrap transition-colors ${
+                isActive
+                  ? "bg-warm-orange text-cream border-navy"
+                  : "bg-cream text-navy border-navy/40 hover:border-navy"
+              }`}
+            >
+              {f.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StatusFilters({
+  active,
+  onChange,
+}: {
+  active: StatusFilterId;
+  onChange: (next: StatusFilterId) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+      {STATUS_FILTERS.map((s) => {
+        const isActive = s === active;
+        return (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onChange(s)}
+            className={`font-display py-0.5 ${
+              isActive
+                ? "text-navy underline decoration-warm-orange decoration-2 underline-offset-4"
+                : "text-diary-ink-soft hover:text-navy"
+            }`}
+          >
+            {s}
+          </button>
+        );
+      })}
     </div>
   );
 }
