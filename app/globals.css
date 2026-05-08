@@ -75,4 +75,38 @@
     @apply pixel-input resize-none;
     min-height: 4.5rem;
   }
+
+  .diary-card {
+    @apply relative bg-diary-cream-1 border-2 border-navy rounded-[14px] p-4;
+    box-shadow:
+      inset 0 0 0 4px #fbe8c4,
+      inset 0 0 0 6px #ecc983,
+      0 4px 0 0 rgba(28, 42, 74, 0.08);
+  }
+
+  .diary-card-soft {
+    @apply diary-card;
+    background-color: #f5dba6;
+    box-shadow:
+      inset 0 0 0 4px #f5dba6,
+      inset 0 0 0 6px #ecc983,
+      0 4px 0 0 rgba(28, 42, 74, 0.08);
+  }
+
+  .dash-h {
+    height: 0;
+    border-top: 2px dashed rgba(28, 42, 74, 0.22);
+  }
+
+  .diary-rail {
+    background-image: linear-gradient(
+      to bottom,
+      #e8743b 0,
+      #e8743b 6px,
+      transparent 6px,
+      transparent 10px
+    );
+    background-size: 2px 10px;
+    background-repeat: repeat-y;
+  }
 }

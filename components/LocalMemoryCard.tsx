@@ -1,11 +1,14 @@
 "use client";
 
 import type { DailyRecord } from "@/lib/local-records";
+import DiaryCard from "./DiaryCard";
 import PixelButton from "./PixelButton";
+import { PixelCalendar, PixelHeart, PixelPin } from "./PixelIcons";
 
 type Props = {
   record: DailyRecord;
   showActions?: boolean;
+  compact?: boolean;
   onEdit?: (record: DailyRecord) => void;
   onDelete?: (record: DailyRecord) => void;
 };
@@ -13,64 +16,123 @@ type Props = {
 export default function LocalMemoryCard({
   record,
   showActions = false,
+  compact = false,
   onEdit,
   onDelete,
 }: Props) {
-  return (
-    <article className="relative pl-6">
-      <span className="absolute left-0 top-2 h-3 w-3 bg-warm-orange border-2 border-navy" />
-      <span className="absolute left-[5px] top-5 bottom-0 w-[2px] bg-navy/30" />
+  if (compact) {
+    return (
+      <DiaryCard>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-1.5">
+              <PixelCalendar size={12} />
+              <span className="font-pixel text-[10px] text-diary-orange-d">
+                {record.date}
+              </span>
+            </div>
+            <h3 className="font-display text-lg leading-tight mt-1">
+              {record.title}
+            </h3>
+          </div>
+          <PixelHeart size={12} className="shrink-0 mt-1" />
+        </div>
+        {record.note ? (
+          <>
+            <div className="dash-h my-2" />
+            <p className="text-base leading-snug">{record.note}</p>
+          </>
+        ) : null}
+      </DiaryCard>
+    );
+  }
 
-      <div className="bg-white border-3 border-navy shadow-pixel p-4">
-        <p className="font-pixel text-[10px] text-warm-orange tracking-widest">
-          {record.date} · 本地记录
-        </p>
-        <h3 className="font-pixel text-xs mt-1 leading-snug">{record.title}</h3>
+  return (
+    <DiaryCard>
+      <span className="absolute top-3 right-3">
+        <PixelHeart size={14} />
+      </span>
+
+      <div className="pr-5">
+        <div className="inline-flex items-center gap-1.5">
+          <PixelCalendar size={12} />
+          <span className="font-pixel text-[10px] text-diary-orange-d">
+            {record.date}
+          </span>
+          <span className="font-pixel text-[9px] text-navy/60 tracking-widest">
+            · 我们的日记
+          </span>
+        </div>
+
+        <h3 className="font-display text-[22px] leading-tight text-navy mt-1 break-words">
+          {record.title}
+        </h3>
+
+        <div className="dash-h my-3" />
 
         {record.note ? (
-          <p className="text-lg mt-2 leading-snug">{record.note}</p>
+          <p className="text-[14px] text-navy leading-relaxed whitespace-pre-line">
+            {record.note}
+          </p>
         ) : null}
+
         {record.memory ? (
-          <p className="text-base mt-2 italic text-navy/80">
+          <p className="mt-3 text-[13px] text-navy/85 italic leading-relaxed">
             “{record.memory}”
           </p>
         ) : null}
-        {record.husbandReflection ? (
-          <p className="text-base mt-2">我：{record.husbandReflection}</p>
+
+        {record.husbandReflection || record.wifeReflection ? (
+          <div className="mt-3 space-y-1 text-[13px] text-navy leading-relaxed">
+            {record.husbandReflection ? (
+              <p>
+                <span className="font-display text-warm-orange">我：</span>
+                {record.husbandReflection}
+              </p>
+            ) : null}
+            {record.wifeReflection ? (
+              <p>
+                <span className="font-display text-heart-d">她：</span>
+                {record.wifeReflection}
+              </p>
+            ) : null}
+          </div>
         ) : null}
-        {record.wifeReflection ? (
-          <p className="text-base mt-1">她：{record.wifeReflection}</p>
-        ) : null}
-        {record.location ? (
-          <p className="font-pixel text-[10px] text-navy/70 mt-2">
-            ◎ {record.location}
-          </p>
-        ) : null}
-        {record.wantsToRepeat ? (
-          <p className="font-pixel text-[10px] text-warm-orange mt-2">
-            ✦ 想再来一次
-          </p>
+
+        {record.location || record.wantsToRepeat ? (
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {record.location ? (
+              <span className="inline-flex items-center gap-1.5 font-display text-sm text-navy">
+                <PixelPin size={12} /> {record.location}
+              </span>
+            ) : null}
+            {record.wantsToRepeat ? (
+              <span className="inline-flex items-center gap-1.5 font-display text-sm text-heart-d">
+                <PixelHeart size={11} /> 想再来一次
+              </span>
+            ) : null}
+          </div>
         ) : null}
 
         {showActions ? (
-          <div className="mt-3 pt-3 border-t-3 border-dashed border-navy/30 flex gap-2">
+          <div className="mt-4 pt-3 border-t-2 border-dashed border-navy/25 flex flex-wrap gap-2">
             <PixelButton
               type="button"
               variant="ghost"
               onClick={() => onEdit?.(record)}
             >
-              编辑这条回忆
+              编辑这一页
             </PixelButton>
             <PixelButton
               type="button"
               variant="ghost"
               onClick={() => onDelete?.(record)}
             >
-              删除这条本地记录
+              轻轻撕掉这一页
             </PixelButton>
           </div>
         ) : null}
       </div>
-    </article>
+    </DiaryCard>
   );
 }
