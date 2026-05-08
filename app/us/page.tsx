@@ -3,6 +3,7 @@ import PixelCard from "@/components/PixelCard";
 import FeatherDivider from "@/components/FeatherDivider";
 import YangMascot from "@/components/YangMascot";
 import LocalDataPanel from "@/components/LocalDataPanel";
+import CloudMigrationCard from "@/components/CloudMigrationCardLazy";
 import VolumeListSection from "@/components/VolumeListSection";
 import DiaryCard from "@/components/DiaryCard";
 import { PixelCalendar } from "@/components/PixelIcons";
@@ -119,6 +120,11 @@ export default function UsPage() {
       <section>
         <h2 className="font-pixel text-xs mb-2">本地数据</h2>
         <LocalDataPanel />
+      </section>
+
+      <section>
+        <h2 className="font-pixel text-xs mb-2">云端同步准备</h2>
+        <CloudMigrationCard />
       </section>
 
       <section>
