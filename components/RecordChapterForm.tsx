@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import {
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import type { DailyRecord } from "@/lib/local-records";
 import PixelButton from "./PixelButton";
 
@@ -24,6 +30,9 @@ type Props = {
   cancelLabel?: string;
 };
 
+const PHOTO_MISSING_ERROR =
+  "这一页还缺一张今天的照片。\n放一张照片进来，我们再把它写进日记。";
+
 function deriveTitle(input: {
   chapterTitle?: string;
   memory: string;
@@ -40,6 +49,45 @@ function deriveTitle(input: {
   return `今天的小事 · ${input.date}`;
 }
 
+async function fileToCompressedDataURL(
+  file: File,
+  maxDim = 1280,
+  quality = 0.85,
+): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.onload = () => {
+      if (typeof reader.result !== "string")
+        return reject(new Error("read failed"));
+      const img = new Image();
+      img.onerror = () => reject(new Error("decode failed"));
+      img.onload = () => {
+        try {
+          const ratio = Math.min(
+            maxDim / img.width,
+            maxDim / img.height,
+            1,
+          );
+          const w = Math.max(1, Math.round(img.width * ratio));
+          const h = Math.max(1, Math.round(img.height * ratio));
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return reject(new Error("canvas unavailable"));
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        } catch (e) {
+          reject(e instanceof Error ? e : new Error(String(e)));
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function RecordChapterForm({
   date,
   chapterId,
@@ -48,7 +96,7 @@ export default function RecordChapterForm({
   existing,
   onSave,
   onCancel,
-  saveLabel = "保存今天这一件",
+  saveLabel = "写下这一页",
   cancelLabel = "先不记录",
 }: Props) {
   const [note, setNote] = useState(existing?.note ?? "");
@@ -59,12 +107,43 @@ export default function RecordChapterForm({
   const [wantsToRepeat, setWantsToRepeat] = useState(
     existing?.wantsToRepeat ?? false,
   );
+  const [photos, setPhotos] = useState<string[]>(existing?.photos ?? []);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const displayTitle = chapterTitle ?? existing?.title;
 
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoBusy(true);
+    try {
+      const dataUrl = await fileToCompressedDataURL(file);
+      setPhotos([dataUrl]);
+      if (error === PHOTO_MISSING_ERROR) setError(null);
+    } catch {
+      setError("这张照片读不进来，换一张试试看。");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  function handlePickPhoto() {
+    fileInputRef.current?.click();
+  }
+
+  function handleRemovePhoto() {
+    setPhotos([]);
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (photos.length === 0) {
+      setError(PHOTO_MISSING_ERROR);
+      return;
+    }
     if (!note.trim()) {
       setError("先写一句“今天发生了什么”吧。");
       return;
@@ -81,7 +160,7 @@ export default function RecordChapterForm({
       wifeReflection: wife.trim() || undefined,
       location: location.trim() || undefined,
       wantsToRepeat,
-      photos: existing?.photos ?? [],
+      photos,
       createdAt: existing?.createdAt,
     });
   }
@@ -90,12 +169,28 @@ export default function RecordChapterForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <p className="font-pixel text-[10px] text-warm-orange tracking-widest">
-          {existing ? "编辑这条回忆" : "今天的一件"}
+          {existing ? "编辑这一页" : "今天这一页"}
         </p>
         <p className="font-pixel text-xs mt-1 leading-snug">
           {displayTitle ?? `${date} · 自由记录`}
         </p>
       </div>
+
+      <Field label="今日照片" required>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        <PhotoSlot
+          photo={photos[0]}
+          busy={photoBusy}
+          onPick={handlePickPhoto}
+          onRemove={handleRemovePhoto}
+        />
+      </Field>
 
       <Field label="今天发生了什么？" required>
         <textarea
@@ -154,7 +249,9 @@ export default function RecordChapterForm({
       </label>
 
       {error ? (
-        <p className="font-pixel text-[10px] text-warm-orange">{error}</p>
+        <p className="font-pixel text-[10px] text-warm-orange whitespace-pre-line leading-relaxed">
+          {error}
+        </p>
       ) : null}
 
       <div className="flex flex-wrap gap-2 pt-1">
@@ -167,6 +264,60 @@ export default function RecordChapterForm({
   );
 }
 
+function PhotoSlot({
+  photo,
+  busy,
+  onPick,
+  onRemove,
+}: {
+  photo?: string;
+  busy: boolean;
+  onPick: () => void;
+  onRemove: () => void;
+}) {
+  if (!photo) {
+    return (
+      <button
+        type="button"
+        onClick={onPick}
+        disabled={busy}
+        className="w-full flex items-center gap-3 p-3 bg-cream border-3 border-dashed border-navy text-left disabled:opacity-60"
+      >
+        <span
+          className="shrink-0 w-12 h-12 grid place-items-center bg-white border-3 border-navy text-navy font-pixel text-base"
+          aria-hidden="true"
+        >
+          +
+        </span>
+        <span className="min-w-0 text-base text-navy leading-snug">
+          {busy ? "正在读取这张照片…" : "上传一张今天的照片，让这一页真的属于今天。"}
+        </span>
+      </button>
+    );
+  }
+  return (
+    <div className="flex items-start gap-3">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={photo}
+        alt="今日照片"
+        width={80}
+        height={80}
+        className="shrink-0 w-20 h-20 object-cover border-3 border-navy bg-cream"
+        style={{ imageRendering: "auto" }}
+      />
+      <div className="flex flex-col gap-2">
+        <PixelButton type="button" variant="ghost" onClick={onPick}>
+          {busy ? "更换中…" : "更换照片"}
+        </PixelButton>
+        <PixelButton type="button" variant="ghost" onClick={onRemove}>
+          移除照片
+        </PixelButton>
+      </div>
+    </div>
+  );
+}
+
 function Field({
   label,
   required,
@@ -174,7 +325,7 @@ function Field({
 }: {
   label: string;
   required?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <label className="block">
