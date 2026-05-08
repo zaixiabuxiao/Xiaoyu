@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { DailyRecord } from "@/lib/local-records";
 import { lifeChapters } from "@/lib/mock-data";
+import { fileToCompressedDataURL } from "@/lib/photo-utils";
 import PixelButton from "./PixelButton";
 import { PixelHeart } from "./PixelIcons";
 
@@ -51,45 +52,6 @@ function deriveTitle(input: {
   const fromNote = input.note.trim().split("\n")[0]?.slice(0, 24);
   if (fromNote) return fromNote;
   return `今天的小事 · ${input.date}`;
-}
-
-async function fileToCompressedDataURL(
-  file: File,
-  maxDim = 1280,
-  quality = 0.85,
-): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("read failed"));
-    reader.onload = () => {
-      if (typeof reader.result !== "string")
-        return reject(new Error("read failed"));
-      const img = new Image();
-      img.onerror = () => reject(new Error("decode failed"));
-      img.onload = () => {
-        try {
-          const ratio = Math.min(
-            maxDim / img.width,
-            maxDim / img.height,
-            1,
-          );
-          const w = Math.max(1, Math.round(img.width * ratio));
-          const h = Math.max(1, Math.round(img.height * ratio));
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) return reject(new Error("canvas unavailable"));
-          ctx.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/jpeg", quality));
-        } catch (e) {
-          reject(e instanceof Error ? e : new Error(String(e)));
-        }
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
 }
 
 export default function RecordChapterForm({

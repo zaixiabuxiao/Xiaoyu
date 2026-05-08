@@ -1,18 +1,11 @@
 import BrandSummaryCard from "@/components/BrandSummaryCard";
-import TodayRecordPanel from "@/components/TodayRecordPanel";
+import HomeChapterCalendar from "@/components/HomeChapterCalendar";
+import HomeChapterChooser from "@/components/HomeChapterChooser";
 import VolumeProgressCard from "@/components/VolumeProgressCard";
-import RecommendedChapterAction from "@/components/RecommendedChapterAction";
-import {
-  getActiveVolume,
-  lifeChapters,
-  todayRecord,
-} from "@/lib/mock-data";
+import { getActiveVolume } from "@/lib/mock-data";
 
 export default function HomePage() {
   const activeVolume = getActiveVolume();
-  const recommended = lifeChapters.find(
-    (c) => c.id === todayRecord.recommendedChapterId,
-  );
 
   return (
     <div className="space-y-3">
@@ -20,7 +13,7 @@ export default function HomePage() {
 
       <BrandSummaryCard />
 
-      <TodayRecordPanel />
+      <HomeChapterCalendar />
 
       <VolumeProgressCard
         volumeNumber={activeVolume.number}
@@ -29,7 +22,7 @@ export default function HomePage() {
         total={activeVolume.totalCount}
       />
 
-      {recommended ? <RecommendedChapterAction chapter={recommended} /> : null}
+      <HomeChapterChooser />
     </div>
   );
 }

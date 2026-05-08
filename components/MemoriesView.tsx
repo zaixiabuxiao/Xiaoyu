@@ -11,6 +11,8 @@ import { useLocalRecords } from "@/lib/use-local-records";
 import DiaryCard from "./DiaryCard";
 import LocalMemoryCard from "./LocalMemoryCard";
 import MemoryTimelineCard from "./MemoryTimelineCard";
+import MemoryAlbumView from "./MemoryAlbumView";
+import MemoryMapView from "./MemoryMapView";
 import YangMascot from "./YangMascot";
 import RecordChapterDialog from "./RecordChapterDialog";
 import RecordChapterForm, { type RecordPayload } from "./RecordChapterForm";
@@ -22,15 +24,16 @@ type Props = {
 
 type TabId = "timeline" | "album" | "map" | "review";
 
-const tabs: { id: TabId; label: string; soon?: boolean }[] = [
+const tabs: { id: TabId; label: string }[] = [
   { id: "timeline", label: "时间线" },
-  { id: "album", label: "相册", soon: true },
-  { id: "map", label: "地图", soon: true },
-  { id: "review", label: "年度回顾", soon: true },
+  { id: "album", label: "相册" },
+  { id: "map", label: "地图" },
+  { id: "review", label: "年度回顾" },
 ];
 
 export default function MemoriesView({ mockMemories }: Props) {
   const { records, hydrated } = useLocalRecords();
+  const [activeTab, setActiveTab] = useState<TabId>("timeline");
   const [editing, setEditing] = useState<DailyRecord | null>(null);
 
   const sortedLocal = [...records].sort((a, b) =>
@@ -55,8 +58,58 @@ export default function MemoriesView({ mockMemories }: Props) {
 
   return (
     <>
-      <FolderTabs activeId="timeline" />
+      <FolderTabs activeId={activeTab} onChange={setActiveTab} />
 
+      {activeTab === "timeline" ? (
+        <TimelineTab
+          hydrated={hydrated}
+          sortedLocal={sortedLocal}
+          mockMemories={mockMemories}
+          onEdit={setEditing}
+          onDelete={handleDelete}
+        />
+      ) : null}
+
+      {activeTab === "album" ? <MemoryAlbumView /> : null}
+
+      {activeTab === "map" ? <MemoryMapView /> : null}
+
+      {activeTab === "review" ? <ReviewPlaceholder /> : null}
+
+      <ClosingRibbon />
+
+      <RecordChapterDialog
+        open={Boolean(editing)}
+        onClose={() => setEditing(null)}
+      >
+        {editing ? (
+          <RecordChapterForm
+            date={editing.date}
+            existing={editing}
+            onSave={handleEditSave}
+            onCancel={() => setEditing(null)}
+          />
+        ) : null}
+      </RecordChapterDialog>
+    </>
+  );
+}
+
+function TimelineTab({
+  hydrated,
+  sortedLocal,
+  mockMemories,
+  onEdit,
+  onDelete,
+}: {
+  hydrated: boolean;
+  sortedLocal: DailyRecord[];
+  mockMemories: LifeChapter[];
+  onEdit: (record: DailyRecord) => void;
+  onDelete: (record: DailyRecord) => void;
+}) {
+  return (
+    <>
       <section className="space-y-3">
         <SectionTitle subtitle="OUR DIARY">我们的日记本</SectionTitle>
 
@@ -73,8 +126,8 @@ export default function MemoriesView({ mockMemories }: Props) {
                 <LocalMemoryCard
                   record={record}
                   showActions
-                  onEdit={(r) => setEditing(r)}
-                  onDelete={handleDelete}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
                 />
               </TimelineEntry>
             ))}
@@ -104,45 +157,46 @@ export default function MemoriesView({ mockMemories }: Props) {
           </Timeline>
         )}
       </section>
-
-      <ClosingRibbon />
-
-      <RecordChapterDialog
-        open={Boolean(editing)}
-        onClose={() => setEditing(null)}
-      >
-        {editing ? (
-          <RecordChapterForm
-            date={editing.date}
-            existing={editing}
-            onSave={handleEditSave}
-            onCancel={() => setEditing(null)}
-          />
-        ) : null}
-      </RecordChapterDialog>
     </>
   );
 }
 
-function FolderTabs({ activeId }: { activeId: TabId }) {
+function ReviewPlaceholder() {
+  return (
+    <DiaryCard variant="soft">
+      <p className="font-display text-[16px] text-navy leading-snug">
+        年度回顾还在慢慢生成。
+      </p>
+      <div className="dash-h my-3" />
+      <p className="text-[13px] text-diary-ink-soft leading-relaxed">
+        等这一卷写得更多一点，我们再一起回头看。
+      </p>
+    </DiaryCard>
+  );
+}
+
+function FolderTabs({
+  activeId,
+  onChange,
+}: {
+  activeId: TabId;
+  onChange: (id: TabId) => void;
+}) {
   return (
     <div className="grid grid-cols-4 gap-1 px-1 mb-1">
       {tabs.map((tab) => {
         const active = tab.id === activeId;
-        const soon = tab.soon;
         return (
           <button
             key={tab.id}
             type="button"
-            disabled={soon}
+            onClick={() => onChange(tab.id)}
             aria-current={active ? "page" : undefined}
             className={[
-              "relative px-1 pt-2 pb-3 text-center font-display text-sm border-2 border-navy rounded-t-[10px]",
+              "relative px-1 pt-2 pb-3 text-center font-display text-sm border-2 border-navy rounded-t-[10px] transition-colors",
               active
                 ? "bg-warm-orange text-cream -mt-0 z-10"
-                : soon
-                  ? "bg-diary-cream-2/60 text-navy/40 mt-[2px] cursor-not-allowed"
-                  : "bg-diary-cream-2 text-navy mt-[2px]",
+                : "bg-diary-cream-2 text-navy mt-[2px] hover:bg-diary-cream-1",
             ].join(" ")}
             style={
               active
@@ -150,19 +204,12 @@ function FolderTabs({ activeId }: { activeId: TabId }) {
                     boxShadow:
                       "inset 0 -3px 0 0 #C66A2F, inset 0 2px 0 0 #F3B06F",
                   }
-                : !soon
-                  ? {
-                      boxShadow: "inset 0 -3px 0 0 rgba(28,42,74,0.10)",
-                    }
-                  : undefined
+                : {
+                    boxShadow: "inset 0 -3px 0 0 rgba(28,42,74,0.10)",
+                  }
             }
           >
             <span className="block leading-tight">{tab.label}</span>
-            {soon ? (
-              <span className="block font-pixel text-[8px] mt-0.5 tracking-widest opacity-70">
-                即将
-              </span>
-            ) : null}
             {active ? (
               <span className="absolute left-1/2 -bottom-2 -translate-x-1/2">
                 <PixelTriangle size={6} color="#EE6F7E" />
