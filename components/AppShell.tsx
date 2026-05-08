@@ -8,7 +8,9 @@ type Props = {
 export default function AppShell({ children }: Props) {
   return (
     <div className="min-h-screen bg-cream text-navy">
-      <main className="mx-auto max-w-md px-4 pt-6 pb-24">{children}</main>
+      <main className="mx-auto max-w-md px-4 pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+        {children}
+      </main>
       <BottomNav />
     </div>
   );

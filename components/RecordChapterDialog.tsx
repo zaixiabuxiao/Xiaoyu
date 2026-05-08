@@ -27,13 +27,13 @@ export default function RecordChapterDialog({ open, onClose, children }: Props) 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-navy/40 p-3"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-navy/40 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="bg-cream border-3 border-navy shadow-pixel max-w-md w-full max-h-[90vh] overflow-y-auto p-4"
+        className="bg-cream border-3 border-navy shadow-pixel max-w-md w-full max-h-[85dvh] overflow-y-auto overscroll-contain p-4"
         onClick={(e) => e.stopPropagation()}
       >
         {children}
