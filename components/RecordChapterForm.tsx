@@ -4,8 +4,12 @@ import { useState, type FormEvent } from "react";
 import type { DailyRecord } from "@/lib/local-records";
 import PixelButton from "./PixelButton";
 
-export type RecordPayload = Omit<DailyRecord, "createdAt"> & {
+export type RecordPayload = Omit<
+  DailyRecord,
+  "createdAt" | "photoRequired" | "timezone"
+> & {
   createdAt?: string;
+  timeLabel?: string;
 };
 
 type Props = {
@@ -77,6 +81,7 @@ export default function RecordChapterForm({
       wifeReflection: wife.trim() || undefined,
       location: location.trim() || undefined,
       wantsToRepeat,
+      photos: existing?.photos ?? [],
       createdAt: existing?.createdAt,
     });
   }
