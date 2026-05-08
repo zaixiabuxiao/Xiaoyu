@@ -2,7 +2,32 @@
 
 Cloud data access layer for 羽扬日记's eventual Supabase sync.
 
-**Nothing in this folder is wired into the UI.** The running app still reads and writes only `localStorage` (`lib/local-records.ts`, `lib/use-local-records.ts`). These modules exist so a later phase can flip the data layer over without inventing data shapes from scratch.
+## Source of truth — final architecture
+
+**Final target: Supabase is the single source of truth. Each device is only an entry point.**
+
+> 羽扬日记只有一本。手机、电脑、iPad 只是打开这本日记的不同门。
+
+This means:
+
+- The canonical data lives in Supabase: `daily_records`, `daily_record_photos`, `album_photos`, `planned_chapters`, `app_settings`, plus the corresponding files in `daily-photos` / `album-photos` storage buckets.
+- Each device's `localStorage` exists for: the soft passcode unlock state, a short-term **read cache**, an **outbox queue** of writes pending upload, and a **migration backup**. It is not a parallel source of truth.
+- This is not peer-to-peer sync between devices. There is one diary, multiple windows.
+
+## Where we are right now (Phase 9E)
+
+- The running app **still reads and writes only `localStorage`** (`lib/local-records.ts`, `lib/use-local-records.ts`). All UI surfaces — `/home`, `/chapters`, `/memories`, `/us` — go through that path.
+- The cloud modules in this folder are inert until the cloud feature flag is on and a Supabase Auth session is active.
+- Phase 9E adds a **manual migration utility** (`lib/cloud/migration.ts` + `components/CloudMigrationCard.tsx` under `/us`) that uploads this device's existing localStorage data to the cloud so that, when Phase 9F switches the source of truth, the cloud already has every memory.
+- Migration is opt-in. It does not run on app load. It does not delete localStorage. It does not change UI behavior elsewhere.
+
+## What Phase 9F will do (next)
+
+- Switch the `useLocalRecords` hook (and `lib/local-records.ts` save paths) to **read from the cloud first** with the localStorage cache as fallback.
+- Route every save through the cloud first; queue in an outbox if offline; replay outbox on launch.
+- Continue to keep `yuyang_diary_unlocked_v1` as a per-device key — it is local UX state, not diary content.
+
+This phase **does not** flip that switch.
 
 ## Module map
 
@@ -15,6 +40,7 @@ Cloud data access layer for 羽扬日记's eventual Supabase sync.
 | `daily-records.ts` | `listCloudDailyRecords`, `saveCloudDailyRecord` (RPC-backed), `updateCloudDailyRecord`, `deleteCloudDailyRecord` |
 | `album-photos.ts` | `listCloudAlbumPhotos`, `saveCloudAlbumPhoto`, `deleteCloudAlbumPhoto` |
 | `planned-chapters.ts` | `listCloudPlannedChapters`, `addCloudPlannedChapter`, `removeCloudPlannedChapter` |
+| `migration.ts` | `getLocalMigrationSummary`, `migrateLocalDataToCloud`, `migrateDailyRecordsToCloud`, `migrateAlbumPhotosToCloud`, `migratePlannedChaptersToCloud` — manual one-shot upload of this device's localStorage data into the shared diary space |
 
 Every public function returns `Promise<CloudResult<T>>`. Callers narrow on `result.ok` instead of catching exceptions.
 
@@ -79,10 +105,38 @@ All of them. They never throw in normal use:
 
 This is by design: the modules were built to be called speculatively without crashing, so the UI can fall back to localStorage on any error code.
 
+## Manual migration (Phase 9E)
+
+The migration utility is exposed in the UI as a single low-priority card under `/us → 云端同步准备`. It is the only place in the app that reads localStorage **and** writes to Supabase in the same code path.
+
+### Behavior
+
+- Runs only when the user taps the button. Never on app load. Never as a background task.
+- Pre-checks readiness in this order: `CLOUD_DISABLED` → `SUPABASE_NOT_CONFIGURED` → `NOT_AUTHENTICATED` (no session) → `NOT_ALLOWED` (not a member) → `NOT_FOUND` (no `diary_spaces` row visible). Each surfaces a friendly Chinese line — no raw Supabase error reaches the user.
+- Iterates DailyRecords → AlbumPhotos → PlannedChapters. A failure in one item never aborts the rest of the run.
+- localStorage is never deleted. The `导出本地回忆` flow on `/us` continues to work as a separate backup.
+
+### DailyRecords idempotency
+
+- Pre-fetches `daily_records.la_date` for the diary_space and skips local records that already exist on that date — **no photo upload happens for skipped records**.
+- If a save still races and the unique constraint fires, the migration treats `DAILY_RECORD_EXISTS` as "skipped", not failed.
+- Photo paths use a migration-only layout: `{diary_space_id}/migrated/{la_date}/{position}-{uuid}.jpg`. RLS only requires the leading `{diary_space_id}/` segment, so this is safe. New diary writes (post-9F) use the canonical `{diary_space_id}/{daily_record_id}/...` layout.
+- A retry that survived a partial failure can re-upload photos for the failed record; orphaned photo files from a failed earlier run will remain in storage. They cost storage but don't corrupt data.
+
+### Album-photo idempotency limit
+
+- When the local `AlbumPhoto.id` is a UUID (which `crypto.randomUUID()` always produces in modern browsers), it's used directly as the cloud row id. Storage path is deterministic (`{diary_space_id}/{albumPhotoId}.jpg`), upload is `upsert: true`, and the row is upserted with `onConflict: "id", ignoreDuplicates: true`. Retried runs are perfectly idempotent.
+- If a local id is **not** a UUID (only happens when the browser lacked `crypto.randomUUID` at the time of upload — extremely rare), the migration mints a fresh cloud UUID and inserts the row under that. A retry of that same local row would mint *another* fresh UUID and create a duplicate cloud row. There is no client-side correlation key for this case. **Documented limitation**; in practice every local album photo on this codebase has a UUID id.
+
+### PlannedChapters idempotency
+
+- Each entry goes through `addCloudPlannedChapter`, which uses `upsert(..., { ignoreDuplicates: true })`. Retries are no-ops; existing rows count as success.
+
 ## What this folder does NOT do
 
-- It does **not** import or modify any UI component.
-- It does **not** read or write `localStorage`.
+- It does **not** read or write `localStorage` from any module other than `migration.ts` (which is opt-in via the migration card).
+- It does **not** delete localStorage.
+- It does **not** switch the source of truth. The app still reads localStorage; that flip is Phase 9F.
 - It does **not** invoke `save_daily_record` automatically — the caller has to opt in.
-- It does **not** orchestrate photo upload + record insert. That happens in the migration phase.
+- It does **not** auto-orchestrate photo uploads outside the migration utility.
 - It does **not** ship the service-role key. Only `getSupabaseClient()` (anon-only) is used.
