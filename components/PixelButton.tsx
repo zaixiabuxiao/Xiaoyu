@@ -9,7 +9,7 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "inline-flex items-center justify-center px-3 py-2 border-3 font-pixel text-[10px] tracking-wide select-none transition-transform active:translate-x-[2px] active:translate-y-[2px]";
+  "inline-flex items-center justify-center px-4 py-2 min-h-[44px] border-3 font-pixel text-[10px] tracking-wide select-none transition-transform active:translate-x-[2px] active:translate-y-[2px]";
 
 const styles: Record<Variant, string> = {
   primary:
