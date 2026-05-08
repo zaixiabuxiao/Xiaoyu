@@ -24,11 +24,11 @@ export default function RecentMemoryPreview({ fallback }: Props) {
   const recent = [...records].sort((a, b) => b.date.localeCompare(a.date))[0];
 
   if (recent) {
-    return <LocalMemoryCard record={recent} />;
+    return <LocalMemoryCard record={recent} compact />;
   }
 
   if (fallback) {
-    return <MemoryTimelineCard chapter={fallback} />;
+    return <MemoryTimelineCard chapter={fallback} compact />;
   }
 
   return (

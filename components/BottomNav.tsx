@@ -24,10 +24,15 @@ export default function BottomNav() {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className={`flex flex-col items-center justify-center py-3 min-h-[56px] font-pixel text-[10px] ${
+                className={`relative flex flex-col items-center justify-center py-3 min-h-[56px] font-pixel text-[10px] ${
                   active ? "text-warm-orange" : "text-navy"
                 }`}
               >
+                <span
+                  className={`absolute top-0 left-1/2 -translate-x-1/2 h-[3px] rounded-b-sm transition-all ${
+                    active ? "w-10 bg-warm-orange" : "w-0 bg-transparent"
+                  }`}
+                />
                 <span className="text-base leading-none mb-1">{item.glyph}</span>
                 <span>{item.label}</span>
               </Link>

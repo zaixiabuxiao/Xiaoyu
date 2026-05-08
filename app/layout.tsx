@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Press_Start_2P, VT323 } from "next/font/google";
+import { Press_Start_2P, VT323, ZCOOL_KuaiLe } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
 
@@ -14,6 +14,13 @@ const vt323 = VT323({
   subsets: ["latin"],
   weight: "400",
   variable: "--font-body",
+  display: "swap",
+});
+
+const zcoolKuaiLe = ZCOOL_KuaiLe({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-display",
   display: "swap",
 });
 
@@ -53,7 +60,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-CN" className={`${pressStart.variable} ${vt323.variable}`}>
+    <html
+      lang="zh-CN"
+      className={`${pressStart.variable} ${vt323.variable} ${zcoolKuaiLe.variable}`}
+    >
       <body>
         <AppShell>{children}</AppShell>
       </body>
