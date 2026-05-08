@@ -18,7 +18,7 @@ export default function HomePage() {
     <div className="space-y-3">
       <h1 className="diary-page-title text-center mb-2">羽扬日记</h1>
 
-      <BrandSummaryCard daysMarried={365} daysUntilAnniversary={15} />
+      <BrandSummaryCard />
 
       <TodayRecordPanel />
 
