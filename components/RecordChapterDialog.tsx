@@ -8,7 +8,11 @@ type Props = {
   children: ReactNode;
 };
 
-export default function RecordChapterDialog({ open, onClose, children }: Props) {
+export default function RecordChapterDialog({
+  open,
+  onClose,
+  children,
+}: Props) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -33,10 +37,28 @@ export default function RecordChapterDialog({ open, onClose, children }: Props) 
       aria-modal="true"
     >
       <div
-        className="bg-cream border-3 border-navy shadow-pixel max-w-md w-full max-h-[85dvh] overflow-y-auto overscroll-contain p-4"
+        className="relative bg-cream border-3 border-navy shadow-pixel max-w-md w-full max-h-[85dvh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {children}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="关闭"
+          className="absolute top-2 right-2 z-20 w-9 h-9 grid place-items-center bg-cream border-2 border-navy text-navy hover:bg-warm-orange hover:text-cream transition-colors"
+        >
+          <span className="font-pixel text-base leading-none">×</span>
+        </button>
+
+        <div
+          className="pt-2 pb-1 flex justify-center pointer-events-none"
+          aria-hidden="true"
+        >
+          <span className="block w-10 h-1 bg-navy/25 rounded-sm" />
+        </div>
+
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-0">
+          {children}
+        </div>
       </div>
     </div>
   );

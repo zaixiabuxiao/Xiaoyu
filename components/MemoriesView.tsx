@@ -117,8 +117,6 @@ export default function MemoriesView({ mockMemories }: Props) {
             existing={editing}
             onSave={handleEditSave}
             onCancel={() => setEditing(null)}
-            saveLabel="保存修改"
-            cancelLabel="取消"
           />
         ) : null}
       </RecordChapterDialog>
