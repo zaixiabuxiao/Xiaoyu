@@ -3,7 +3,11 @@ import PixelCard from "@/components/PixelCard";
 import FeatherDivider from "@/components/FeatherDivider";
 import YangMascot from "@/components/YangMascot";
 import LocalDataPanel from "@/components/LocalDataPanel";
-import { chapterVolumes } from "@/lib/mock-data";
+import VolumeListSection from "@/components/VolumeListSection";
+import DiaryCard from "@/components/DiaryCard";
+import { PixelCalendar } from "@/components/PixelIcons";
+import { relationshipDates } from "@/lib/mock-data";
+import { formatDateForDisplay } from "@/lib/date-utils";
 
 const lifestyle = [
   "平时喜欢宅家",
@@ -24,6 +28,12 @@ const futureNotes = [
   "希望我们慢慢变成更柔软的人。",
 ];
 
+const calendarEntries = [
+  { label: "相识日", date: relationshipDates.metDate },
+  { label: "在一起日", date: relationshipDates.togetherDate },
+  { label: "订婚日", date: relationshipDates.engagementDate },
+];
+
 export default function UsPage() {
   return (
     <div className="space-y-5">
@@ -41,6 +51,35 @@ export default function UsPage() {
           </div>
         </div>
       </PixelCard>
+
+      <section>
+        <h2 className="font-pixel text-xs mb-2">我们的日历</h2>
+        <DiaryCard variant="soft">
+          <ul className="space-y-2">
+            {calendarEntries.map((entry) => (
+              <li
+                key={entry.label}
+                className="flex items-baseline gap-2 whitespace-nowrap"
+              >
+                <PixelCalendar size={12} />
+                <span className="font-display text-[15px] text-navy">
+                  {entry.label}
+                </span>
+                <span className="font-display text-[14px] text-diary-ink-soft">
+                  ·
+                </span>
+                <span className="font-pixel text-[10px] text-diary-orange-d">
+                  {formatDateForDisplay(entry.date)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="dash-h my-3" />
+          <p className="text-[14px] italic text-navy/85 leading-relaxed">
+            “这些日子，是这本日记最开始的书签。”
+          </p>
+        </DiaryCard>
+      </section>
 
       <section>
         <h2 className="font-pixel text-xs mb-2">生活倾向</h2>
@@ -93,36 +132,7 @@ export default function UsPage() {
 
       <section>
         <h2 className="font-pixel text-xs mb-2">章节卷</h2>
-        <ul className="space-y-3">
-          {chapterVolumes.map((vol) => {
-            const numCN = vol.number === 1 ? "一" : vol.number === 2 ? "二" : "三";
-            return (
-              <li key={vol.id}>
-                <PixelCard variant={vol.active ? "orange" : "default"}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-pixel text-[10px] tracking-widest text-warm-orange">
-                        VOL · {vol.number}
-                      </p>
-                      <p className="font-pixel text-xs mt-1">
-                        第{numCN}卷：{vol.title}
-                      </p>
-                    </div>
-                    <span
-                      className={`font-pixel text-[10px] border-2 px-2 py-1 ${
-                        vol.active
-                          ? "bg-navy text-cream border-navy"
-                          : "bg-cream text-navy border-navy"
-                      }`}
-                    >
-                      {vol.active ? "进行中" : "未开启"}
-                    </span>
-                  </div>
-                </PixelCard>
-              </li>
-            );
-          })}
-        </ul>
+        <VolumeListSection />
       </section>
     </div>
   );

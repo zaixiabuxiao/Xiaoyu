@@ -1,3 +1,10 @@
+import {
+  getLosAngelesNowLabel,
+  getLosAngelesToday,
+  LA_TIMEZONE,
+  type LosAngelesTimezone,
+} from "./date-utils";
+
 export type DailyRecord = {
   date: string;
   chapterId: string;
@@ -9,6 +16,10 @@ export type DailyRecord = {
   wifeReflection?: string;
   location?: string;
   wantsToRepeat?: boolean;
+  photos: string[];
+  photoRequired: true;
+  timezone: LosAngelesTimezone;
+  timeLabel?: string;
   createdAt: string;
 };
 
@@ -47,12 +58,34 @@ function notify(eventName: string): void {
   window.dispatchEvent(new Event(eventName));
 }
 
+function normalizeRecord(raw: Partial<DailyRecord> & { date: string }): DailyRecord {
+  return {
+    date: raw.date,
+    chapterId: raw.chapterId ?? `freeform_${raw.date}`,
+    volumeId: raw.volumeId ?? "v1",
+    title: raw.title ?? "",
+    note: raw.note ?? "",
+    memory: raw.memory,
+    husbandReflection: raw.husbandReflection,
+    wifeReflection: raw.wifeReflection,
+    location: raw.location,
+    wantsToRepeat: raw.wantsToRepeat,
+    photos: Array.isArray(raw.photos) ? raw.photos : [],
+    photoRequired: true,
+    timezone: LA_TIMEZONE,
+    timeLabel: raw.timeLabel,
+    createdAt: raw.createdAt ?? new Date().toISOString(),
+  };
+}
+
+export { getLosAngelesToday, getLosAngelesNowLabel };
+
+/**
+ * Returns the official "today" string anchored to America/Los_Angeles.
+ * One-record-per-day is enforced on this LA date, not the browser's local date.
+ */
 export function getTodayString(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return getLosAngelesToday();
 }
 
 export class DailyRecordExistsError extends Error {
@@ -63,7 +96,11 @@ export class DailyRecordExistsError extends Error {
 }
 
 export function getDailyRecords(): DailyRecord[] {
-  return read<DailyRecord[]>(RECORDS_KEY, []);
+  const raw = read<Array<Partial<DailyRecord> & { date: string }>>(
+    RECORDS_KEY,
+    [],
+  );
+  return raw.map(normalizeRecord);
 }
 
 export function getTodayRecord(): DailyRecord | undefined {
@@ -72,7 +109,10 @@ export function getTodayRecord(): DailyRecord | undefined {
 }
 
 export function saveDailyRecord(
-  record: Omit<DailyRecord, "createdAt"> & { createdAt?: string },
+  record: Omit<DailyRecord, "createdAt" | "photoRequired" | "timezone"> & {
+    createdAt?: string;
+    timeLabel?: string;
+  },
 ): DailyRecord {
   const records = getDailyRecords();
   if (records.some((r) => r.date === record.date)) {
@@ -80,6 +120,10 @@ export function saveDailyRecord(
   }
   const full: DailyRecord = {
     ...record,
+    photos: record.photos ?? [],
+    photoRequired: true,
+    timezone: LA_TIMEZONE,
+    timeLabel: record.timeLabel ?? getLosAngelesNowLabel(),
     createdAt: record.createdAt ?? new Date().toISOString(),
   };
   records.push(full);
@@ -95,7 +139,13 @@ export function updateDailyRecord(
   const records = getDailyRecords();
   const idx = records.findIndex((r) => r.date === date);
   if (idx === -1) return undefined;
-  const updated: DailyRecord = { ...records[idx], ...partial, date };
+  const updated: DailyRecord = {
+    ...records[idx],
+    ...partial,
+    date,
+    photoRequired: true,
+    timezone: LA_TIMEZONE,
+  };
   records[idx] = updated;
   write(RECORDS_KEY, records);
   notify(RECORDS_EVENT);
@@ -145,13 +195,15 @@ export function exportDailyRecordsAsText(): string {
   }
   const lines: string[] = ["羽扬日记 · 本地回忆", ""];
   for (const r of records) {
-    lines.push(`【${r.date}】${r.title}`);
+    const stamp = r.timeLabel ? ` · ${r.timeLabel}` : "";
+    lines.push(`【${r.date}${stamp}】${r.title}`);
     if (r.note) lines.push(`今天发生了什么：${r.note}`);
     if (r.memory) lines.push(`我想记住的是：${r.memory}`);
     if (r.husbandReflection) lines.push(`我的感受：${r.husbandReflection}`);
     if (r.wifeReflection) lines.push(`她的感受：${r.wifeReflection}`);
     if (r.location) lines.push(`地点：${r.location}`);
     if (r.wantsToRepeat) lines.push("✦ 想再来一次");
+    if (r.photos.length > 0) lines.push(`今日照片：${r.photos.length} 张`);
     lines.push("");
   }
   return lines.join("\n");

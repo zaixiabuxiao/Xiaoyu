@@ -1,6 +1,7 @@
 "use client";
 
 import type { DailyRecord } from "@/lib/local-records";
+import { formatDateForDisplay } from "@/lib/date-utils";
 import DiaryCard from "./DiaryCard";
 import PixelButton from "./PixelButton";
 import { PixelCalendar, PixelHeart, PixelPin } from "./PixelIcons";
@@ -13,6 +14,13 @@ type Props = {
   onDelete?: (record: DailyRecord) => void;
 };
 
+function timePartFromLabel(label?: string): string | undefined {
+  if (!label) return undefined;
+  const idx = label.indexOf(" ");
+  if (idx === -1) return undefined;
+  return label.slice(idx + 1).trim() || undefined;
+}
+
 export default function LocalMemoryCard({
   record,
   showActions = false,
@@ -20,15 +28,23 @@ export default function LocalMemoryCard({
   onEdit,
   onDelete,
 }: Props) {
+  const dateLabel = formatDateForDisplay(record.date);
+  const timeLabel = timePartFromLabel(record.timeLabel);
+  const photo = record.photos[0];
+
   if (compact) {
     return (
       <DiaryCard>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-1.5">
+            <div className="inline-flex items-center gap-1.5 flex-wrap">
               <PixelCalendar size={12} />
               <span className="font-pixel text-[10px] text-diary-orange-d">
-                {record.date}
+                {dateLabel}
+                {timeLabel ? ` ${timeLabel}` : ""}
+              </span>
+              <span className="font-pixel text-[9px] text-navy/60 tracking-widest">
+                · 洛杉矶时间
               </span>
             </div>
             <h3 className="font-display text-lg leading-tight mt-1">
@@ -49,18 +65,31 @@ export default function LocalMemoryCard({
 
   return (
     <DiaryCard>
-      <span className="absolute top-3 right-3">
+      <span className="absolute top-3 right-3 z-10">
         <PixelHeart size={14} />
       </span>
 
+      {photo ? (
+        <div className="-mx-1 mb-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photo}
+            alt="今日照片"
+            className="block w-full max-h-64 object-cover border-3 border-navy bg-cream"
+            style={{ imageRendering: "auto" }}
+          />
+        </div>
+      ) : null}
+
       <div className="pr-5">
-        <div className="inline-flex items-center gap-1.5">
+        <div className="inline-flex items-center gap-1.5 flex-wrap">
           <PixelCalendar size={12} />
           <span className="font-pixel text-[10px] text-diary-orange-d">
-            {record.date}
+            {dateLabel}
+            {timeLabel ? ` ${timeLabel}` : ""}
           </span>
           <span className="font-pixel text-[9px] text-navy/60 tracking-widest">
-            · 我们的日记
+            · 洛杉矶时间
           </span>
         </div>
 
