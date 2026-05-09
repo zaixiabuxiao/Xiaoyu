@@ -10,8 +10,11 @@
 //        NEXT_PUBLIC_SUPABASE_ANON_KEY        (older Supabase projects)
 //
 // Missing env vars never throw — the app falls back to localStorage.
-
-import { hasSupabaseEnv } from "./supabase-client";
+//
+// This module deliberately does NOT import `lib/supabase-client.ts` so that
+// asking "is cloud enabled?" never pulls `@supabase/supabase-js` into the
+// caller's bundle. Phase 9J relies on this for `useDiaryData` to keep
+// supabase-js in a dynamically-imported chunk.
 
 // Each NEXT_PUBLIC_* env var must be referenced via a literal static property
 // access (e.g. `process.env.NEXT_PUBLIC_CLOUD_ENABLED`) so Next.js's build-time
@@ -62,7 +65,7 @@ export function getCloudConfigStatus(): CloudConfigStatus {
     reason = "ok";
   }
 
-  const enabled = flagOn && hasSupabaseEnv();
+  const enabled = flagOn && hasSupabaseUrl && hasSupabaseClientKey;
 
   return {
     enabled,

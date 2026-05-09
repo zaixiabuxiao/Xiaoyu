@@ -2,12 +2,8 @@
 
 import { useState } from "react";
 import type { LifeChapter } from "@/lib/mock-data";
-import {
-  deleteDailyRecord,
-  updateDailyRecord,
-  type DailyRecord,
-} from "@/lib/local-records";
-import { useLocalRecords } from "@/lib/use-local-records";
+import type { DailyRecord } from "@/lib/local-records";
+import { useDiaryData } from "@/lib/use-diary-data";
 import DiaryCard from "./DiaryCard";
 import LocalMemoryCard from "./LocalMemoryCard";
 import MemoryTimelineCard from "./MemoryTimelineCard";
@@ -30,28 +26,28 @@ const tabs: { id: TabId; label: string }[] = [
 ];
 
 export default function MemoriesView({ mockMemories }: Props) {
-  const { records, hydrated } = useLocalRecords();
+  const data = useDiaryData();
   const [activeTab, setActiveTab] = useState<TabId>("timeline");
   const [editing, setEditing] = useState<DailyRecord | null>(null);
 
-  const sortedLocal = [...records].sort((a, b) =>
+  const sortedLocal = [...data.records].sort((a, b) =>
     b.date.localeCompare(a.date),
   );
 
-  function handleEditSave(payload: RecordPayload) {
+  async function handleEditSave(payload: RecordPayload) {
     if (!editing) return;
-    updateDailyRecord(editing.date, payload);
+    await data.updateDailyRecord(editing.date, payload);
     setEditing(null);
   }
 
-  function handleDelete(record: DailyRecord) {
+  async function handleDelete(record: DailyRecord) {
     if (typeof window !== "undefined") {
       const ok = window.confirm(
-        `要轻轻撕掉 ${record.date} 这一页吗？这一份本地记录会被删除。`,
+        `要轻轻撕掉 ${record.date} 这一页吗？`,
       );
       if (!ok) return;
     }
-    deleteDailyRecord(record.date);
+    await data.deleteDailyRecord(record.date);
   }
 
   return (
@@ -60,7 +56,7 @@ export default function MemoriesView({ mockMemories }: Props) {
 
       {activeTab === "timeline" ? (
         <TimelineTab
-          hydrated={hydrated}
+          hydrated={data.hydrated}
           sortedLocal={sortedLocal}
           mockMemories={mockMemories}
           onEdit={setEditing}

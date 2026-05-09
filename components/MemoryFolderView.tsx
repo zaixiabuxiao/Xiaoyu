@@ -1,16 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  deleteAlbumPhoto,
-  saveAlbumPhoto,
-  updateAlbumPhoto,
-  type AlbumPhoto,
-  type DailyRecord,
-} from "@/lib/local-records";
+import type { AlbumPhoto, DailyRecord } from "@/lib/local-records";
 import { formatDateForDisplay } from "@/lib/date-utils";
-import { useLocalRecords } from "@/lib/use-local-records";
-import { useMemoryFolders } from "@/lib/use-memory-folders";
+import { useDiaryData } from "@/lib/use-diary-data";
 import { DEFAULT_FOLDER_NAME } from "@/lib/memory-folders";
 import DiaryCard from "./DiaryCard";
 import DiaryButton from "./DiaryButton";
@@ -155,8 +148,8 @@ function bucketize(
 }
 
 export default function MemoryFolderView() {
-  const { records, album, hydrated } = useLocalRecords();
-  const { folders } = useMemoryFolders();
+  const data = useDiaryData();
+  const { records, album, folders, hydrated } = data;
   const [activeFolderKey, setActiveFolderKey] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -186,21 +179,21 @@ export default function MemoryFolderView() {
     ? album.find((p) => p.id === editingPhotoId)
     : undefined;
 
-  function handleUpload(payload: AlbumUploadPayload) {
-    saveAlbumPhoto(payload);
+  async function handleUpload(payload: AlbumUploadPayload) {
+    await data.saveAlbumPhoto(payload);
     setUploadOpen(false);
   }
 
-  function handleEditSave(payload: AlbumPhotoEditPayload) {
+  async function handleEditSave(payload: AlbumPhotoEditPayload) {
     if (!editingPhotoId) return;
-    updateAlbumPhoto(editingPhotoId, payload);
+    await data.updateAlbumPhoto(editingPhotoId, payload);
     setEditingPhotoId(null);
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (typeof window === "undefined") return;
     if (window.confirm("把这张照片从地图相册里取出来吗？")) {
-      deleteAlbumPhoto(id);
+      await data.deleteAlbumPhoto(id);
     }
   }
 
@@ -211,6 +204,8 @@ export default function MemoryFolderView() {
       </DiaryCard>
     );
   }
+
+  const debugStats = computeDebugStats(buckets, data);
 
   if (activeBucket) {
     return (
@@ -233,6 +228,7 @@ export default function MemoryFolderView() {
           onClose={() => setEditingPhotoId(null)}
           onSave={handleEditSave}
         />
+        <FolderDebugBlock stats={debugStats} />
       </>
     );
   }
@@ -259,6 +255,7 @@ export default function MemoryFolderView() {
           onClose={() => setUploadOpen(false)}
           onSave={handleUpload}
         />
+        <FolderDebugBlock stats={debugStats} />
       </>
     );
   }
@@ -297,7 +294,83 @@ export default function MemoryFolderView() {
         onClose={() => setEditingPhotoId(null)}
         onSave={handleEditSave}
       />
+      <FolderDebugBlock stats={debugStats} />
     </>
+  );
+}
+
+type FolderDebugStats = {
+  source: string;
+  signedIn: boolean;
+  cloudActive: boolean;
+  hasDiarySpaceId: boolean;
+  recordsCount: number;
+  albumCount: number;
+  foldersCount: number;
+  visibleBucketsCount: number;
+  visiblePhotosCount: number;
+  signedUrlSuccessCount: number;
+  signedUrlEmptyCount: number;
+  errorCopy: string | null;
+};
+
+function computeDebugStats(
+  buckets: FolderBucket[],
+  data: ReturnType<typeof useDiaryData>,
+): FolderDebugStats {
+  let visiblePhotos = 0;
+  let signedOk = 0;
+  let signedEmpty = 0;
+  for (const b of buckets) {
+    visiblePhotos += b.items.length;
+  }
+  for (const photo of data.album) {
+    if (typeof photo.photo === "string" && photo.photo.length > 0) {
+      signedOk++;
+    } else {
+      signedEmpty++;
+    }
+  }
+  return {
+    source: data.source,
+    signedIn: data.signedIn,
+    cloudActive: data.cloudActive,
+    hasDiarySpaceId: data.diarySpaceId !== null,
+    recordsCount: data.records.length,
+    albumCount: data.album.length,
+    foldersCount: data.folders.length,
+    visibleBucketsCount: buckets.length,
+    visiblePhotosCount: visiblePhotos,
+    signedUrlSuccessCount: signedOk,
+    signedUrlEmptyCount: signedEmpty,
+    errorCopy: data.error,
+  };
+}
+
+function FolderDebugBlock({ stats }: { stats: FolderDebugStats }) {
+  return (
+    <div className="mt-4 opacity-60">
+      <div className="dash-h mb-2" />
+      <p className="font-pixel text-[9px] tracking-widest text-navy/50 mb-1">
+        DEBUG · 地图相册
+      </p>
+      <ul className="font-pixel text-[10px] text-navy/60 leading-relaxed space-y-0.5">
+        <li>source: {stats.source}</li>
+        <li>signedIn: {String(stats.signedIn)}</li>
+        <li>cloudActive: {String(stats.cloudActive)}</li>
+        <li>hasDiarySpaceId: {String(stats.hasDiarySpaceId)}</li>
+        <li>records: {stats.recordsCount}</li>
+        <li>album: {stats.albumCount}</li>
+        <li>folders: {stats.foldersCount}</li>
+        <li>visibleBuckets: {stats.visibleBucketsCount}</li>
+        <li>visiblePhotos: {stats.visiblePhotosCount}</li>
+        <li>signedUrlOk: {stats.signedUrlSuccessCount}</li>
+        <li>signedUrlEmpty: {stats.signedUrlEmptyCount}</li>
+        {stats.errorCopy ? (
+          <li className="break-all">error: {stats.errorCopy}</li>
+        ) : null}
+      </ul>
+    </div>
   );
 }
 
