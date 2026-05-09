@@ -10,6 +10,7 @@ import DiaryCard from "@/components/DiaryCard";
 import { PixelCalendar } from "@/components/PixelIcons";
 import { relationshipDates } from "@/lib/mock-data";
 import { formatDateForDisplay } from "@/lib/date-utils";
+import { getCloudConfigStatus } from "@/lib/cloud-config";
 
 const lifestyle = [
   "平时喜欢宅家",
@@ -37,6 +38,7 @@ const calendarEntries = [
 ];
 
 export default function UsPage() {
+  const cloudDebug = getCloudConfigStatus();
   return (
     <div className="space-y-5">
       <PixelHeader eyebrow="US" title="我们" />
@@ -131,6 +133,21 @@ export default function UsPage() {
       <section>
         <h2 className="font-pixel text-xs mb-2">云端同步准备</h2>
         <CloudMigrationCard />
+      </section>
+
+      <section aria-label="cloud-debug" className="opacity-60">
+        <p className="font-pixel text-[9px] tracking-widest text-navy/50 mb-1">
+          DEBUG · CLOUD CONFIG
+        </p>
+        <ul className="font-pixel text-[10px] text-navy/60 leading-relaxed space-y-0.5">
+          <li>enabled: {String(cloudDebug.enabled)}</li>
+          <li>reason: {cloudDebug.reason}</li>
+          <li>hasSupabaseUrl: {String(cloudDebug.hasSupabaseUrl)}</li>
+          <li>
+            hasSupabaseClientKey: {String(cloudDebug.hasSupabaseClientKey)}
+          </li>
+          <li>flagValue: {cloudDebug.flagValue ?? "undefined"}</li>
+        </ul>
       </section>
 
       <section>
