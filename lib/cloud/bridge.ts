@@ -45,6 +45,11 @@ export {
 export { getCloudDiarySpace } from "./diary-space";
 
 export {
+  loadCloudImportantDates,
+  saveCloudImportantDates,
+} from "./important-dates";
+
+export {
   getCurrentCloudSession,
   signInCloud,
   signOutCloud,

@@ -5,17 +5,23 @@ import DiaryCard from "./DiaryCard";
 import DiaryButton from "./DiaryButton";
 import PixelButton from "./PixelButton";
 import { PixelCalendar } from "./PixelIcons";
+import type { ImportantDate } from "@/lib/important-dates";
 import {
-  addImportantDate,
-  deleteImportantDate,
-  updateImportantDate,
-  type ImportantDate,
+  SEED_ENGAGED_ID,
+  SEED_MET_ID,
+  SEED_TOGETHER_ID,
 } from "@/lib/important-dates";
 import { useImportantDates } from "@/lib/use-important-dates";
 import {
   daysSinceInLosAngeles,
   formatDateForDisplay,
 } from "@/lib/date-utils";
+
+const CORE_SEED_IDS = new Set([
+  SEED_MET_ID,
+  SEED_TOGETHER_ID,
+  SEED_ENGAGED_ID,
+]);
 
 type EditorMode =
   | { kind: "idle" }
@@ -24,7 +30,13 @@ type EditorMode =
   | { kind: "confirming-delete"; id: string };
 
 export default function ImportantDatesEditor() {
-  const { dates, hydrated } = useImportantDates();
+  const {
+    dates,
+    hydrated,
+    addImportantDate,
+    updateImportantDate,
+    deleteImportantDate,
+  } = useImportantDates();
   const [mode, setMode] = useState<EditorMode>({ kind: "idle" });
   const [error, setError] = useState<string | null>(null);
 
@@ -33,39 +45,47 @@ export default function ImportantDatesEditor() {
     setError(null);
   }
 
-  function handleAdd(input: { label: string; date: string; note?: string }) {
-    try {
-      addImportantDate(input);
-      reset();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "保存出错。");
+  async function handleAdd(input: {
+    label: string;
+    date: string;
+    note?: string;
+  }) {
+    const result = await addImportantDate(input);
+    if (!result.ok) {
+      setError(result.message || "保存出错。");
+      return;
     }
+    reset();
   }
 
-  function handleUpdate(
+  async function handleUpdate(
     id: string,
     input: { label: string; date: string; note?: string },
   ) {
-    try {
-      updateImportantDate(id, input);
-      reset();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "保存出错。");
+    const result = await updateImportantDate(id, input);
+    if (!result.ok) {
+      setError(result.message || "保存出错。");
+      return;
     }
+    reset();
   }
 
-  function handleDelete(id: string) {
-    deleteImportantDate(id);
+  async function handleDelete(id: string) {
+    const result = await deleteImportantDate(id);
+    if (!result.ok) {
+      setError(result.message || "删除出错。");
+      return;
+    }
     reset();
   }
 
   return (
     <DiaryCard variant="soft">
       <p className="font-pixel text-[10px] tracking-widest text-warm-orange">
-        US · 重要的日子
+        US · 我们的日历
       </p>
       <p className="font-display text-[16px] text-navy mt-1 leading-snug">
-        重要的日子
+        我们的日历
       </p>
       <p className="text-[13px] text-diary-ink-soft mt-2 leading-relaxed">
         这些日子，是这本日记最开始的书签。以后也可以继续加新的书签。
@@ -97,6 +117,7 @@ export default function ImportantDatesEditor() {
                 <DateRow
                   date={d}
                   disabled={mode.kind !== "idle"}
+                  isCore={CORE_SEED_IDS.has(d.id)}
                   onEdit={() => {
                     setMode({ kind: "editing", id: d.id });
                     setError(null);
@@ -140,11 +161,13 @@ export default function ImportantDatesEditor() {
 function DateRow({
   date,
   disabled,
+  isCore,
   onEdit,
   onDelete,
 }: {
   date: ImportantDate;
   disabled: boolean;
+  isCore: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -171,6 +194,11 @@ function DateRow({
             {date.note}
           </p>
         ) : null}
+        {isCore ? (
+          <p className="text-[11px] text-diary-ink-soft mt-1 leading-relaxed">
+            这个日子是日记的书签，可以编辑，但不建议删除。
+          </p>
+        ) : null}
         <div className="mt-2 flex flex-wrap gap-2">
           <PixelButton
             type="button"
@@ -180,14 +208,16 @@ function DateRow({
           >
             编辑
           </PixelButton>
-          <PixelButton
-            type="button"
-            variant="ghost"
-            onClick={onDelete}
-            disabled={disabled}
-          >
-            删除
-          </PixelButton>
+          {isCore ? null : (
+            <PixelButton
+              type="button"
+              variant="ghost"
+              onClick={onDelete}
+              disabled={disabled}
+            >
+              删除
+            </PixelButton>
+          )}
         </div>
       </div>
     </div>

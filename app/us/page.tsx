@@ -6,12 +6,8 @@ import LocalDataPanel from "@/components/LocalDataPanel";
 import CloudAuthCard from "@/components/CloudAuthCardLazy";
 import CloudMigrationCard from "@/components/CloudMigrationCardLazy";
 import VolumeListSection from "@/components/VolumeListSection";
-import DiaryCard from "@/components/DiaryCard";
 import ImportantDatesEditor from "@/components/ImportantDatesEditor";
 import CloudCacheBanner from "@/components/CloudCacheBanner";
-import { PixelCalendar } from "@/components/PixelIcons";
-import { relationshipDates } from "@/lib/mock-data";
-import { formatDateForDisplay } from "@/lib/date-utils";
 
 const lifestyle = [
   "平时喜欢宅家",
@@ -30,12 +26,6 @@ const futureNotes = [
   "希望我们一直愿意，先听对方说完。",
   "希望未来的家，进门是温的。",
   "希望我们慢慢变成更柔软的人。",
-];
-
-const calendarEntries = [
-  { label: "相识日", date: relationshipDates.metDate },
-  { label: "在一起日", date: relationshipDates.togetherDate },
-  { label: "订婚日", date: relationshipDates.engagementDate },
 ];
 
 export default function UsPage() {
@@ -58,35 +48,6 @@ export default function UsPage() {
 
       <section>
         <h2 className="font-pixel text-xs mb-2">我们的日历</h2>
-        <DiaryCard variant="soft">
-          <ul className="space-y-2">
-            {calendarEntries.map((entry) => (
-              <li
-                key={entry.label}
-                className="flex items-baseline gap-2 whitespace-nowrap"
-              >
-                <PixelCalendar size={12} />
-                <span className="font-display text-[15px] text-navy">
-                  {entry.label}
-                </span>
-                <span className="font-display text-[14px] text-diary-ink-soft">
-                  ·
-                </span>
-                <span className="font-pixel text-[10px] text-diary-orange-d">
-                  {formatDateForDisplay(entry.date)}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="dash-h my-3" />
-          <p className="text-[14px] italic text-navy/85 leading-relaxed">
-            “这些日子，是这本日记最开始的书签。”
-          </p>
-        </DiaryCard>
-      </section>
-
-      <section>
-        <h2 className="font-pixel text-xs mb-2">重要的日子</h2>
         <ImportantDatesEditor />
       </section>
 
