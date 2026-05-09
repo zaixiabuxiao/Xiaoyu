@@ -84,3 +84,18 @@ export function hasSupabaseEnv(): boolean {
     readEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) && readPublicClientKey(),
   );
 }
+
+/**
+ * Returns the Supabase project host (e.g. `xxx.supabase.co`) parsed from
+ * NEXT_PUBLIC_SUPABASE_URL. Safe to display — the host is not a secret.
+ * Returns `null` when the URL is missing or unparseable.
+ */
+export function getCloudProjectHost(): string | null {
+  const url = readEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  if (!url) return null;
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+}
