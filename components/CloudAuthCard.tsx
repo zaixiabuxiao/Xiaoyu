@@ -3,6 +3,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { getCloudConfigStatus } from "@/lib/cloud-config";
 import {
+  getCloudProjectHost,
+  getSupabaseClient,
+} from "@/lib/supabase-client";
+import {
   getCurrentCloudSession,
   signInCloud,
   signOutCloud,
@@ -16,6 +20,38 @@ import PixelButton from "./PixelButton";
 const SIGNIN_ERROR_COPY =
   "这把云端钥匙没有打开，再检查一下邮箱或密码。";
 
+type SafeAuthError = {
+  name: string | null;
+  message: string | null;
+  status: number | null;
+  code: string | null;
+};
+
+type AuthFlowDebug = {
+  attempted: boolean;
+  clientReady: boolean;
+  projectHost: string | null;
+  passwordLength: number | null;
+  resultCode: string | null;
+  rawError: SafeAuthError | null;
+};
+
+function extractSafeErrorFields(cause: unknown): SafeAuthError | null {
+  if (!cause || typeof cause !== "object") return null;
+  const e = cause as {
+    name?: unknown;
+    message?: unknown;
+    status?: unknown;
+    code?: unknown;
+  };
+  return {
+    name: typeof e.name === "string" ? e.name : null,
+    message: typeof e.message === "string" ? e.message : null,
+    status: typeof e.status === "number" ? e.status : null,
+    code: typeof e.code === "string" ? e.code : null,
+  };
+}
+
 export default function CloudAuthCard() {
   const [config] = useState(() => getCloudConfigStatus());
   const [session, setSession] = useState<CloudSession | null>(null);
@@ -24,6 +60,14 @@ export default function CloudAuthCard() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authDebug, setAuthDebug] = useState<AuthFlowDebug>(() => ({
+    attempted: false,
+    clientReady: getSupabaseClient() !== null,
+    projectHost: getCloudProjectHost(),
+    passwordLength: null,
+    resultCode: null,
+    rawError: null,
+  }));
 
   useEffect(() => {
     if (!config.enabled) {
@@ -67,6 +111,16 @@ export default function CloudAuthCard() {
     if (busy) return;
     setBusy(true);
     setError(null);
+    const submittedPasswordLength = password.length;
+    setAuthDebug((prev) => ({
+      ...prev,
+      attempted: true,
+      clientReady: getSupabaseClient() !== null,
+      projectHost: getCloudProjectHost(),
+      passwordLength: submittedPasswordLength,
+      resultCode: null,
+      rawError: null,
+    }));
     const result = await signInCloud({
       email: email.trim(),
       password,
@@ -76,8 +130,18 @@ export default function CloudAuthCard() {
       setSession(result.data);
       setPassword("");
       setEmail("");
+      setAuthDebug((prev) => ({
+        ...prev,
+        resultCode: "OK",
+        rawError: null,
+      }));
     } else {
       setError(SIGNIN_ERROR_COPY);
+      setAuthDebug((prev) => ({
+        ...prev,
+        resultCode: result.code,
+        rawError: extractSafeErrorFields(result.cause),
+      }));
     }
   }
 
@@ -139,7 +203,43 @@ export default function CloudAuthCard() {
           </DiaryButton>
         </form>
       )}
+      <AuthFlowDebugBlock debug={authDebug} />
     </DiaryCard>
+  );
+}
+
+function AuthFlowDebugBlock({ debug }: { debug: AuthFlowDebug }) {
+  return (
+    <div className="mt-4 opacity-60">
+      <div className="dash-h mb-2" />
+      <p className="font-pixel text-[9px] tracking-widest text-navy/50 mb-1">
+        DEBUG · AUTH FLOW
+      </p>
+      <ul className="font-pixel text-[10px] text-navy/60 leading-relaxed space-y-0.5">
+        <li>attempted: {String(debug.attempted)}</li>
+        <li>clientReady: {String(debug.clientReady)}</li>
+        <li>projectHost: {debug.projectHost ?? "null"}</li>
+        <li>
+          passwordLength:{" "}
+          {debug.passwordLength === null
+            ? "—"
+            : String(debug.passwordLength)}
+        </li>
+        <li>resultCode: {debug.resultCode ?? "—"}</li>
+        <li>
+          errorStatus:{" "}
+          {debug.rawError?.status === null ||
+          debug.rawError?.status === undefined
+            ? "—"
+            : String(debug.rawError.status)}
+        </li>
+        <li>errorCode: {debug.rawError?.code ?? "—"}</li>
+        <li>errorName: {debug.rawError?.name ?? "—"}</li>
+        <li className="break-all">
+          errorMessage: {debug.rawError?.message ?? "—"}
+        </li>
+      </ul>
+    </div>
   );
 }
 
