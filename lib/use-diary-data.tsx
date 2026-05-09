@@ -59,6 +59,19 @@ import {
   MEMORY_FOLDERS_EVENT,
   type MemoryFolder,
 } from "./memory-folders";
+import {
+  addImportantDate as localAddImportantDate,
+  updateImportantDate as localUpdateImportantDate,
+  deleteImportantDate as localDeleteImportantDate,
+  getImportantDates,
+  getSeedImportantDates,
+  IMPORTANT_DATES_EVENT,
+  IMPORTANT_DATES_STORAGE_KEY,
+  SEED_ENGAGED_ID,
+  SEED_MET_ID,
+  SEED_TOGETHER_ID,
+  type ImportantDate,
+} from "./important-dates";
 import { isCloudEnabled } from "./cloud-config";
 import type { CloudErrorCode } from "./cloud/errors";
 import type { CloudSession } from "./cloud/auth";
@@ -125,6 +138,7 @@ export type DiaryDataValue = {
   planned: string[];
   album: AlbumPhoto[];
   folders: MemoryFolder[];
+  importantDates: ImportantDate[];
   hydrated: boolean;
   loading: boolean;
   source: DataSource;
@@ -164,6 +178,16 @@ export type DiaryDataValue = {
   getOrCreateMemoryFolderByName: (
     name: string,
   ) => Promise<WriteResult<MemoryFolder>>;
+  addImportantDate: (input: {
+    label: string;
+    date: string;
+    note?: string;
+  }) => Promise<WriteResult<ImportantDate>>;
+  updateImportantDate: (
+    id: string,
+    patch: { label?: string; date?: string; note?: string },
+  ) => Promise<WriteResult<ImportantDate>>;
+  deleteImportantDate: (id: string) => Promise<WriteResult<boolean>>;
 };
 
 const DiaryDataContext = createContext<DiaryDataValue | null>(null);
@@ -199,13 +223,72 @@ function readLocalSnapshot(): {
   planned: string[];
   album: AlbumPhoto[];
   folders: MemoryFolder[];
+  importantDates: ImportantDate[];
 } {
   return {
     records: getDailyRecords(),
     planned: getPlannedChapters(),
     album: getAlbumPhotos(),
     folders: getMemoryFolders(),
+    importantDates: getImportantDates(),
   };
+}
+
+function writeLocalImportantDates(dates: ImportantDate[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      IMPORTANT_DATES_STORAGE_KEY,
+      JSON.stringify(dates),
+    );
+    window.dispatchEvent(new Event(IMPORTANT_DATES_EVENT));
+  } catch {
+    /* ignore */
+  }
+}
+
+function isCoreSeedId(id: string): boolean {
+  return (
+    id === SEED_MET_ID || id === SEED_TOGETHER_ID || id === SEED_ENGAGED_ID
+  );
+}
+
+/**
+ * Combine local + cloud importantDates so we never lose user-added dates.
+ * Rules (in order):
+ *   1. Cloud entries with the same `id` as a local entry win (cloud is the
+ *      single source of truth).
+ *   2. Local entries with no matching cloud `id` AND no cloud entry sharing
+ *      the same (label, date) pair are appended.
+ *   3. The seed dates are always present — if neither side has them, fall
+ *      back to the original seed values.
+ */
+function mergeImportantDates(
+  cloud: ImportantDate[],
+  local: ImportantDate[],
+): { merged: ImportantDate[]; addedFromLocal: number } {
+  const merged: ImportantDate[] = [...cloud];
+  const cloudIds = new Set(cloud.map((d) => d.id));
+  const cloudLabelDate = new Set(
+    cloud.map((d) => `${d.label}|${d.date}`),
+  );
+  let addedFromLocal = 0;
+  for (const d of local) {
+    if (cloudIds.has(d.id)) continue;
+    const fingerprint = `${d.label}|${d.date}`;
+    if (cloudLabelDate.has(fingerprint)) continue;
+    merged.push(d);
+    cloudIds.add(d.id);
+    cloudLabelDate.add(fingerprint);
+    addedFromLocal++;
+  }
+  // Ensure the three seed dates exist; missing ones fall back to defaults.
+  for (const seed of getSeedImportantDates()) {
+    if (!merged.some((d) => d.id === seed.id)) {
+      merged.push(seed);
+    }
+  }
+  return { merged, addedFromLocal };
 }
 
 // One-shot dynamic import of the cloud helpers. Cached after first load so
@@ -228,6 +311,7 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
   const [planned, setPlanned] = useState<string[]>([]);
   const [album, setAlbum] = useState<AlbumPhoto[]>([]);
   const [folders, setFolders] = useState<MemoryFolder[]>([]);
+  const [importantDates, setImportantDates] = useState<ImportantDate[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<DataSource>("local");
@@ -312,6 +396,33 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
         setPlanned(snap.planned);
         setAlbum(snap.album);
         setFolders(snap.folders);
+
+        // Important dates: cloud-first with first-time merge from local.
+        const localDates = getImportantDates();
+        const cloudResult = await bridge.loadCloudImportantDates(diarySpaceId);
+        if (cloudResult.ok) {
+          if (cloudResult.data === null) {
+            // No importantDates key in app_settings yet — seed from local.
+            await bridge.saveCloudImportantDates(diarySpaceId, localDates);
+            setImportantDates(localDates);
+            writeLocalImportantDates(localDates);
+          } else {
+            const { merged, addedFromLocal } = mergeImportantDates(
+              cloudResult.data,
+              localDates,
+            );
+            if (addedFromLocal > 0) {
+              await bridge.saveCloudImportantDates(diarySpaceId, merged);
+            }
+            setImportantDates(merged);
+            writeLocalImportantDates(merged);
+          }
+        } else {
+          // Cloud important-dates fetch failed; keep local but don't fail the
+          // whole snapshot — the rest already loaded from cloud.
+          setImportantDates(localDates);
+        }
+
         setSource("cloud");
         setLoading(false);
         setHydrated(true);
@@ -323,6 +434,7 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
       setPlanned(local.planned);
       setAlbum(local.album);
       setFolders(local.folders);
+      setImportantDates(local.importantDates);
       setSource("cache");
       setError("云端暂时没有连上，这台设备先显示本地记录。");
       setLoading(false);
@@ -336,6 +448,7 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
     setPlanned(local.planned);
     setAlbum(local.album);
     setFolders(local.folders);
+    setImportantDates(local.importantDates);
     setSource("local");
     setLoading(false);
     setHydrated(true);
@@ -356,17 +469,20 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
       setPlanned(local.planned);
       setAlbum(local.album);
       setFolders(local.folders);
+      setImportantDates(local.importantDates);
     };
     window.addEventListener(STORAGE_EVENTS.records, refresh);
     window.addEventListener(STORAGE_EVENTS.planned, refresh);
     window.addEventListener(STORAGE_EVENTS.album, refresh);
     window.addEventListener(MEMORY_FOLDERS_EVENT, refresh);
+    window.addEventListener(IMPORTANT_DATES_EVENT, refresh);
     window.addEventListener("storage", refresh);
     return () => {
       window.removeEventListener(STORAGE_EVENTS.records, refresh);
       window.removeEventListener(STORAGE_EVENTS.planned, refresh);
       window.removeEventListener(STORAGE_EVENTS.album, refresh);
       window.removeEventListener(MEMORY_FOLDERS_EVENT, refresh);
+      window.removeEventListener(IMPORTANT_DATES_EVENT, refresh);
       window.removeEventListener("storage", refresh);
     };
   }, [cloudActive]);
@@ -817,12 +933,115 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
     [cloudActive, diarySpaceId, fetchSnapshot],
   );
 
+  const addImportantDateFn = useCallback(
+    async (input: {
+      label: string;
+      date: string;
+      note?: string;
+    }): Promise<WriteResult<ImportantDate>> => {
+      let created: ImportantDate;
+      try {
+        created = localAddImportantDate(input);
+      } catch (e) {
+        return {
+          ok: false,
+          code: "LOCAL_FAILED",
+          message: e instanceof Error ? e.message : "保存日历时出错了。",
+        };
+      }
+      if (!cloudActive || !diarySpaceId) {
+        return { ok: true, data: created, source: "local" };
+      }
+      const bridge = await loadCloudBridge();
+      const next = getImportantDates();
+      const result = await bridge.saveCloudImportantDates(diarySpaceId, next);
+      if (!result.ok) {
+        return { ok: false, code: result.code, message: result.message };
+      }
+      await fetchSnapshot();
+      return { ok: true, data: created, source: "cloud" };
+    },
+    [cloudActive, diarySpaceId, fetchSnapshot],
+  );
+
+  const updateImportantDateFn = useCallback(
+    async (
+      id: string,
+      patch: { label?: string; date?: string; note?: string },
+    ): Promise<WriteResult<ImportantDate>> => {
+      let updated: ImportantDate | null;
+      try {
+        updated = localUpdateImportantDate(id, patch);
+      } catch (e) {
+        return {
+          ok: false,
+          code: "LOCAL_FAILED",
+          message: e instanceof Error ? e.message : "更新日历时出错了。",
+        };
+      }
+      if (!updated) {
+        return {
+          ok: false,
+          code: "NOT_FOUND",
+          message: "找不到这一条日子。",
+        };
+      }
+      if (!cloudActive || !diarySpaceId) {
+        return { ok: true, data: updated, source: "local" };
+      }
+      const bridge = await loadCloudBridge();
+      const result = await bridge.saveCloudImportantDates(
+        diarySpaceId,
+        getImportantDates(),
+      );
+      if (!result.ok) {
+        return { ok: false, code: result.code, message: result.message };
+      }
+      await fetchSnapshot();
+      return { ok: true, data: updated, source: "cloud" };
+    },
+    [cloudActive, diarySpaceId, fetchSnapshot],
+  );
+
+  const deleteImportantDateFn = useCallback(
+    async (id: string): Promise<WriteResult<boolean>> => {
+      // Refuse core seed deletion at the hook level even if a caller bypasses
+      // the UI guard.
+      if (isCoreSeedId(id)) {
+        return {
+          ok: false,
+          code: "NOT_ALLOWED",
+          message: "这个日子是日记的书签，可以编辑，但不建议删除。",
+        };
+      }
+      const localOk = localDeleteImportantDate(id);
+      if (!localOk) {
+        return { ok: true, data: false, source: "local" };
+      }
+      if (!cloudActive || !diarySpaceId) {
+        return { ok: true, data: true, source: "local" };
+      }
+      const bridge = await loadCloudBridge();
+      const result = await bridge.saveCloudImportantDates(
+        diarySpaceId,
+        getImportantDates(),
+      );
+      if (!result.ok) {
+        return { ok: false, code: result.code, message: result.message };
+      }
+      await fetchSnapshot();
+      return { ok: true, data: true, source: "cloud" };
+    },
+    [cloudActive, diarySpaceId, fetchSnapshot],
+  );
+
   const value = useMemo<DiaryDataValue>(
     () => ({
       records,
       planned,
       album,
       folders,
+      importantDates,
       hydrated,
       loading,
       source,
@@ -843,12 +1062,16 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
       updateMemoryFolder: updateMemoryFolderFn,
       deleteMemoryFolder: deleteMemoryFolderFn,
       getOrCreateMemoryFolderByName: getOrCreateMemoryFolderByNameFn,
+      addImportantDate: addImportantDateFn,
+      updateImportantDate: updateImportantDateFn,
+      deleteImportantDate: deleteImportantDateFn,
     }),
     [
       records,
       planned,
       album,
       folders,
+      importantDates,
       hydrated,
       loading,
       source,
@@ -869,6 +1092,9 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
       updateMemoryFolderFn,
       deleteMemoryFolderFn,
       getOrCreateMemoryFolderByNameFn,
+      addImportantDateFn,
+      updateImportantDateFn,
+      deleteImportantDateFn,
     ],
   );
 
@@ -958,5 +1184,45 @@ function makeFallbackValue(): DiaryDataValue {
       noopWrite(localDeleteFolder(id)),
     getOrCreateMemoryFolderByName: async (name) =>
       noopWrite(localGetOrCreateFolder(name)),
+    addImportantDate: async (input) => {
+      try {
+        return noopWrite(localAddImportantDate(input));
+      } catch (e) {
+        return {
+          ok: false,
+          code: "LOCAL_FAILED",
+          message: e instanceof Error ? e.message : "保存日历时出错了。",
+        };
+      }
+    },
+    updateImportantDate: async (id, patch) => {
+      try {
+        const u = localUpdateImportantDate(id, patch);
+        if (!u) {
+          return {
+            ok: false,
+            code: "NOT_FOUND",
+            message: "找不到这一条日子。",
+          };
+        }
+        return noopWrite(u);
+      } catch (e) {
+        return {
+          ok: false,
+          code: "LOCAL_FAILED",
+          message: e instanceof Error ? e.message : "更新日历时出错了。",
+        };
+      }
+    },
+    deleteImportantDate: async (id) => {
+      if (isCoreSeedId(id)) {
+        return {
+          ok: false,
+          code: "NOT_ALLOWED",
+          message: "这个日子是日记的书签，可以编辑，但不建议删除。",
+        };
+      }
+      return noopWrite(localDeleteImportantDate(id));
+    },
   };
 }

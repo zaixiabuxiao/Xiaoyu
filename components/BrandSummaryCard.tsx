@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import DiaryCard from "./DiaryCard";
 import CoupleCutout from "./CoupleCutout";
 import {
-  getCoreImportantDate,
-  IMPORTANT_DATES_EVENT,
   SEED_ENGAGED_ID,
   SEED_MET_ID,
   SEED_TOGETHER_ID,
+  getSeedImportantDates,
 } from "@/lib/important-dates";
+import { useDiaryData } from "@/lib/use-diary-data";
 import {
   daysSinceInLosAngeles,
   formatDateForDisplay,
@@ -23,36 +23,25 @@ const CORE_IDS = [
 
 type CoreEvent = { brandLabel: string; date: string };
 
-function loadCoreEvents(): CoreEvent[] {
-  return CORE_IDS.map((c) => ({
-    brandLabel: c.brandLabel,
-    date: getCoreImportantDate(c.id).date,
-  }));
-}
-
 export default function BrandSummaryCard() {
-  const [events, setEvents] = useState<CoreEvent[] | null>(null);
-  const [days, setDays] = useState<number[] | null>(null);
+  const data = useDiaryData();
 
-  useEffect(() => {
-    const refresh = () => {
-      const next = loadCoreEvents();
-      setEvents(next);
-      setDays(next.map((e) => daysSinceInLosAngeles(e.date)));
-    };
-    refresh();
-    window.addEventListener(IMPORTANT_DATES_EVENT, refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener(IMPORTANT_DATES_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
+  const displayEvents: CoreEvent[] = useMemo(() => {
+    const seeds = getSeedImportantDates();
+    return CORE_IDS.map((c) => {
+      const found = data.importantDates.find((d) => d.id === c.id);
+      const fallback = seeds.find((d) => d.id === c.id)!;
+      return {
+        brandLabel: c.brandLabel,
+        date: (found ?? fallback).date,
+      };
+    });
+  }, [data.importantDates]);
 
-  const displayEvents = events ?? CORE_IDS.map((c) => ({
-    brandLabel: c.brandLabel,
-    date: getCoreImportantDate(c.id).date,
-  }));
+  const days = useMemo(
+    () => displayEvents.map((e) => daysSinceInLosAngeles(e.date)),
+    [displayEvents],
+  );
 
   return (
     <DiaryCard className="overflow-hidden">
@@ -81,7 +70,7 @@ export default function BrandSummaryCard() {
                   · 第
                 </span>
                 <span className="font-pixel text-[10px] text-diary-orange-d">
-                  {days?.[i] ?? "…"}
+                  {data.hydrated ? days[i] : "…"}
                 </span>
                 <span className="font-display text-[12px] text-diary-ink-soft">
                   天
