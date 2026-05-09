@@ -13,8 +13,12 @@
 
 import { hasSupabaseEnv } from "./supabase-client";
 
-function readEnv(name: string): string | undefined {
-  const value = process.env[name];
+// Each NEXT_PUBLIC_* env var must be referenced via a literal static property
+// access (e.g. `process.env.NEXT_PUBLIC_CLOUD_ENABLED`) so Next.js's build-time
+// substitution can inline its value into the browser bundle. A dynamic
+// `process.env[name]` lookup is NOT replaced and would always be undefined in
+// client components.
+function readEnv(value: string | undefined): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
@@ -37,11 +41,13 @@ export function isCloudEnabled(): boolean {
 }
 
 export function getCloudConfigStatus(): CloudConfigStatus {
-  const flagValue = readEnv("NEXT_PUBLIC_CLOUD_ENABLED");
-  const hasSupabaseUrl = Boolean(readEnv("NEXT_PUBLIC_SUPABASE_URL"));
+  const flagValue = readEnv(process.env.NEXT_PUBLIC_CLOUD_ENABLED);
+  const hasSupabaseUrl = Boolean(
+    readEnv(process.env.NEXT_PUBLIC_SUPABASE_URL),
+  );
   const hasSupabaseClientKey = Boolean(
-    readEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") ??
-      readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+    readEnv(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ??
+      readEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
   );
   const flagOn = flagValue === "true";
 
