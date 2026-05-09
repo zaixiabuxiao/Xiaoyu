@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import type { AlbumPhoto, DailyRecord } from "@/lib/local-records";
 import { formatDateForDisplay } from "@/lib/date-utils";
 import { useDiaryData } from "@/lib/use-diary-data";
-import { DEFAULT_FOLDER_NAME } from "@/lib/memory-folders";
+import {
+  DEFAULT_FOLDER_NAME,
+  type MemoryFolder,
+} from "@/lib/memory-folders";
 import DiaryCard from "./DiaryCard";
 import DiaryButton from "./DiaryButton";
 import PixelButton from "./PixelButton";
@@ -197,6 +200,34 @@ export default function MemoryFolderView() {
     }
   }
 
+  async function handleDeleteFolder(folder: MemoryFolder) {
+    if (typeof window === "undefined") return;
+    if (folder.name === DEFAULT_FOLDER_NAME) return;
+    const photosInFolder = data.album.filter(
+      (p) => p.folderId === folder.id,
+    );
+    const hasPhotos = photosInFolder.length > 0;
+    const message = hasPhotos
+      ? `这个文件夹里还有照片。删除文件夹后，照片会移到「${DEFAULT_FOLDER_NAME}」，不会被删除。\n\n确认删除「${folder.name}」吗？`
+      : `确认删除「${folder.name}」吗？`;
+    if (!window.confirm(message)) return;
+    if (hasPhotos) {
+      const defaultRes = await data.getOrCreateMemoryFolderByName(
+        DEFAULT_FOLDER_NAME,
+      );
+      if (!defaultRes.ok) return;
+      for (const p of photosInFolder) {
+        await data.updateAlbumPhoto(p.id, {
+          folderId: defaultRes.data.id,
+          folderName: DEFAULT_FOLDER_NAME,
+        });
+      }
+    }
+    await data.deleteMemoryFolder(folder.id);
+    await data.refresh();
+    setActiveFolderKey(null);
+  }
+
   if (!hydrated) {
     return (
       <DiaryCard variant="soft">
@@ -208,6 +239,12 @@ export default function MemoryFolderView() {
   const debugStats = computeDebugStats(buckets, data);
 
   if (activeBucket) {
+    const persistedFolder = data.folders.find(
+      (f) => f.name === activeBucket.name,
+    );
+    const canDeleteFolder =
+      persistedFolder !== undefined &&
+      persistedFolder.name !== DEFAULT_FOLDER_NAME;
     return (
       <>
         <FolderDetail
@@ -216,6 +253,11 @@ export default function MemoryFolderView() {
           onEditAlbumPhoto={(id) => setEditingPhotoId(id)}
           onDeleteAlbumPhoto={handleDelete}
           onUpload={() => setUploadOpen(true)}
+          onDeleteFolder={
+            canDeleteFolder
+              ? () => handleDeleteFolder(persistedFolder!)
+              : undefined
+          }
         />
         <UploadDialog
           open={uploadOpen}
@@ -424,12 +466,14 @@ function FolderDetail({
   onEditAlbumPhoto,
   onDeleteAlbumPhoto,
   onUpload,
+  onDeleteFolder,
 }: {
   bucket: FolderBucket;
   onBack: () => void;
   onEditAlbumPhoto: (id: string) => void;
   onDeleteAlbumPhoto: (id: string) => void;
   onUpload: () => void;
+  onDeleteFolder?: () => void;
 }) {
   return (
     <>
@@ -449,6 +493,17 @@ function FolderDetail({
         <p className="font-pixel text-[10px] text-diary-ink-soft mt-1">
           {bucket.items.length} 张
         </p>
+        {onDeleteFolder ? (
+          <div className="mt-2">
+            <PixelButton
+              type="button"
+              variant="ghost"
+              onClick={onDeleteFolder}
+            >
+              删除文件夹
+            </PixelButton>
+          </div>
+        ) : null}
       </DiaryCard>
 
       {bucket.items.length === 0 ? (
