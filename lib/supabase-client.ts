@@ -25,8 +25,12 @@ import {
 
 let cachedClient: SupabaseClient | null | undefined;
 
-function readEnv(name: string): string | undefined {
-  const value = process.env[name];
+// Each NEXT_PUBLIC_* env var must be referenced via a literal static property
+// access (e.g. `process.env.NEXT_PUBLIC_SUPABASE_URL`) so Next.js's build-time
+// substitution can inline its value into the browser bundle. A dynamic
+// `process.env[name]` lookup is NOT replaced and would always be undefined in
+// client components.
+function readEnv(value: string | undefined): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
@@ -38,8 +42,8 @@ function readEnv(name: string): string | undefined {
  */
 function readPublicClientKey(): string | undefined {
   return (
-    readEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") ??
-    readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    readEnv(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ??
+    readEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
   );
 }
 
@@ -50,7 +54,7 @@ function readPublicClientKey(): string | undefined {
 export function getSupabaseClient(): SupabaseClient | null {
   if (cachedClient !== undefined) return cachedClient;
 
-  const url = readEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const url = readEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const key = readPublicClientKey();
 
   if (!url || !key) {
@@ -76,5 +80,7 @@ export function getSupabaseClient(): SupabaseClient | null {
  * Convenience for "do we have a usable client?" without creating one.
  */
 export function hasSupabaseEnv(): boolean {
-  return Boolean(readEnv("NEXT_PUBLIC_SUPABASE_URL") && readPublicClientKey());
+  return Boolean(
+    readEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) && readPublicClientKey(),
+  );
 }
