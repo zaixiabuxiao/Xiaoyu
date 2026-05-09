@@ -60,8 +60,13 @@ export function getSupabaseClient(): SupabaseClient | null {
 
   cachedClient = createClient(url, key, {
     auth: {
-      persistSession: false,
-      autoRefreshToken: false,
+      // Supabase manages its own session storage under its own
+      // localStorage key (separate from our `life_*` keys). Persisting +
+      // auto-refreshing the access token is what makes the cloud-identity
+      // sign-in survive page reloads.
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
     },
   });
   return cachedClient;
