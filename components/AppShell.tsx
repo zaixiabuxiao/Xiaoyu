@@ -4,6 +4,7 @@ import PasscodeGate from "./PasscodeGate";
 import { AppMusicProvider } from "./AppMusic";
 import MusicPlayer from "./MusicPlayer";
 import RefreshButton from "./RefreshButton";
+import ClickSoundLayer from "./ClickSoundLayer";
 import { DiaryDataProvider } from "@/lib/use-diary-data";
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
 export default function AppShell({ children }: Props) {
   return (
     <AppMusicProvider>
+      <ClickSoundLayer />
       <PasscodeGate>
         <DiaryDataProvider>
           <div className="min-h-screen bg-cream text-navy">
