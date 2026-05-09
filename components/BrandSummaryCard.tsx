@@ -3,24 +3,56 @@
 import { useEffect, useState } from "react";
 import DiaryCard from "./DiaryCard";
 import CoupleCutout from "./CoupleCutout";
-import { relationshipDates } from "@/lib/mock-data";
+import {
+  getCoreImportantDate,
+  IMPORTANT_DATES_EVENT,
+  SEED_ENGAGED_ID,
+  SEED_MET_ID,
+  SEED_TOGETHER_ID,
+} from "@/lib/important-dates";
 import {
   daysSinceInLosAngeles,
   formatDateForDisplay,
 } from "@/lib/date-utils";
 
-const events = [
-  { label: "相识", date: relationshipDates.metDate },
-  { label: "在一起", date: relationshipDates.togetherDate },
-  { label: "订婚", date: relationshipDates.engagementDate },
+const CORE_IDS = [
+  { id: SEED_MET_ID, brandLabel: "相识" },
+  { id: SEED_TOGETHER_ID, brandLabel: "在一起" },
+  { id: SEED_ENGAGED_ID, brandLabel: "订婚" },
 ] as const;
 
+type CoreEvent = { brandLabel: string; date: string };
+
+function loadCoreEvents(): CoreEvent[] {
+  return CORE_IDS.map((c) => ({
+    brandLabel: c.brandLabel,
+    date: getCoreImportantDate(c.id).date,
+  }));
+}
+
 export default function BrandSummaryCard() {
+  const [events, setEvents] = useState<CoreEvent[] | null>(null);
   const [days, setDays] = useState<number[] | null>(null);
 
   useEffect(() => {
-    setDays(events.map((e) => daysSinceInLosAngeles(e.date)));
+    const refresh = () => {
+      const next = loadCoreEvents();
+      setEvents(next);
+      setDays(next.map((e) => daysSinceInLosAngeles(e.date)));
+    };
+    refresh();
+    window.addEventListener(IMPORTANT_DATES_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(IMPORTANT_DATES_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
   }, []);
+
+  const displayEvents = events ?? CORE_IDS.map((c) => ({
+    brandLabel: c.brandLabel,
+    date: getCoreImportantDate(c.id).date,
+  }));
 
   return (
     <DiaryCard className="overflow-hidden">
@@ -34,13 +66,13 @@ export default function BrandSummaryCard() {
           </p>
           <div className="dash-h my-1.5" />
           <ul className="space-y-[2px]">
-            {events.map((e, i) => (
+            {displayEvents.map((e, i) => (
               <li
-                key={e.label}
+                key={e.brandLabel}
                 className="flex items-baseline gap-1 whitespace-nowrap"
               >
                 <span className="font-display text-[13px] text-navy">
-                  {e.label}于
+                  {e.brandLabel}于
                 </span>
                 <span className="font-pixel text-[10px] text-diary-orange-d">
                   {formatDateForDisplay(e.date)}
