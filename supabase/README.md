@@ -165,7 +165,7 @@ If a select returns more than just the caller's own data, **stop** — there's a
 
 ## Security: never expose the service-role key
 
-- The browser is allowed to know `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Both are public by Supabase's design — the anon key only has the access RLS lets through.
+- The browser is allowed to know `NEXT_PUBLIC_SUPABASE_URL` and the public client key (either `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` on newer projects or `NEXT_PUBLIC_SUPABASE_ANON_KEY` on older ones — both env names are accepted by the client). Both keys are public by Supabase's design — they only have the access RLS lets through.
 - The **service-role key bypasses RLS** and must never appear in `.env.local`, in Git, in `process.env.NEXT_PUBLIC_*`, or anywhere bundled to the client.
 - Use the service-role key only in trusted server contexts: a one-off SQL session, a cron job, an Edge Function explicitly running with elevated privileges. Never in this Next.js app's client-side code.
 - The fixed passcode `0515` in the client's `PasscodeGate` is a soft UX gate — "this is private, please don't snoop." It is **not** real security. Cloud access is controlled by Supabase Auth + RLS, not by the passcode.

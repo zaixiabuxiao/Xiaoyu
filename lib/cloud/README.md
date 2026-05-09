@@ -48,7 +48,7 @@ Every public function returns `Promise<CloudResult<T>>`. Callers narrow on `resu
 
 All of these must be true before any of these functions can return `ok: true`:
 
-1. `NEXT_PUBLIC_CLOUD_ENABLED === "true"` and `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set.
+1. `NEXT_PUBLIC_CLOUD_ENABLED === "true"`, `NEXT_PUBLIC_SUPABASE_URL` is set, and the browser-safe key is set as either `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (newer Supabase projects, `sb_publishable_…`) or the legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` (older projects, `eyJ…` JWT). Both env names are accepted.
 2. The user has an active Supabase Auth session (signed in through whatever sign-in flow lands in 9D-3 or later).
 3. There's a `diary_space_members` row that links `auth.uid()` to the diary space they're trying to access. Without it, RLS returns either no rows on selects or `42501 not_allowed:` on the RPC.
 4. The path convention for storage uploads matches the storage RLS policy: paths must start with `{diary_space_id}/...`.
@@ -84,7 +84,7 @@ There is no automated script for now — running these against a real Supabase p
 3. Copy `.env.example` → `.env.local`, fill in:
    ```
    NEXT_PUBLIC_SUPABASE_URL=...
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...   # or NEXT_PUBLIC_SUPABASE_ANON_KEY=... on older projects
    NEXT_PUBLIC_CLOUD_ENABLED=true
    ```
 4. `npm run dev`, open the app, then in the browser devtools console:
