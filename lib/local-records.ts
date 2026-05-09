@@ -29,6 +29,13 @@ export type AlbumPhoto = {
   date?: string;
   location?: string;
   note?: string;
+  // Phase 9H: 地图相册 folder reference. `folderId` is the canonical link;
+  // `folderName` is a denormalized hint for legacy rows that pre-date the
+  // folder concept and for offline-first display when the folder hasn't
+  // been resolved yet. The UI falls back to `location` (or the default
+  // "没有地点的照片" folder) when both are missing.
+  folderId?: string;
+  folderName?: string;
   createdAt: string;
   timezone: LosAngelesTimezone;
 };
@@ -235,6 +242,8 @@ function normalizeAlbumPhoto(raw: Partial<AlbumPhoto> & { photo: string }): Albu
     date: raw.date,
     location: raw.location,
     note: raw.note,
+    folderId: raw.folderId,
+    folderName: raw.folderName,
     createdAt: raw.createdAt ?? new Date().toISOString(),
     timezone: LA_TIMEZONE,
   };
@@ -266,6 +275,14 @@ export function saveAlbumPhoto(
         ? input.location
         : undefined,
     note: input.note && input.note.trim().length > 0 ? input.note : undefined,
+    folderId:
+      input.folderId && input.folderId.trim().length > 0
+        ? input.folderId
+        : undefined,
+    folderName:
+      input.folderName && input.folderName.trim().length > 0
+        ? input.folderName
+        : undefined,
     createdAt: input.createdAt ?? new Date().toISOString(),
     timezone: LA_TIMEZONE,
   };
@@ -273,6 +290,40 @@ export function saveAlbumPhoto(
   write(ALBUM_KEY, photos);
   notify(ALBUM_EVENT);
   return next;
+}
+
+export function updateAlbumPhoto(
+  id: string,
+  patch: Partial<
+    Pick<AlbumPhoto, "date" | "location" | "note" | "folderId" | "folderName">
+  >,
+): AlbumPhoto | undefined {
+  const photos = getAlbumPhotos();
+  const idx = photos.findIndex((p) => p.id === id);
+  if (idx === -1) return undefined;
+  const existing = photos[idx];
+  const trim = (s?: string) => {
+    if (s === undefined) return undefined;
+    const t = s.trim();
+    return t.length > 0 ? t : undefined;
+  };
+  const updated: AlbumPhoto = {
+    ...existing,
+    date: patch.date !== undefined ? trim(patch.date) : existing.date,
+    location:
+      patch.location !== undefined ? trim(patch.location) : existing.location,
+    note: patch.note !== undefined ? trim(patch.note) : existing.note,
+    folderId:
+      patch.folderId !== undefined ? trim(patch.folderId) : existing.folderId,
+    folderName:
+      patch.folderName !== undefined
+        ? trim(patch.folderName)
+        : existing.folderName,
+  };
+  photos[idx] = updated;
+  write(ALBUM_KEY, photos);
+  notify(ALBUM_EVENT);
+  return updated;
 }
 
 export function deleteAlbumPhoto(id: string): void {

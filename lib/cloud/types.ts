@@ -65,10 +65,34 @@ export type CloudAlbumPhotoRow = {
   taken_on: string | null;
   location: string | null;
   note: string | null;
+  // Phase 9H: nullable FK to memory_folders. Null means the row predates
+  // the folder concept and the application treats it as belonging to the
+  // default "没有地点的照片" folder.
+  folder_id: string | null;
   width: number | null;
   height: number | null;
   bytes: number | null;
   created_at: string;
+};
+
+export type CloudMemoryFolderRow = {
+  id: string;
+  diary_space_id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CloudMemoryFolderInput = {
+  diarySpaceId: string;
+  name: string;
+  description?: string;
+};
+
+export type CloudMemoryFolderPatch = {
+  name?: string;
+  description?: string | null;
 };
 
 export type CloudPlannedChapterRow = {
@@ -132,9 +156,17 @@ export type CloudAlbumPhotoInput = {
   takenOn?: string;
   location?: string;
   note?: string;
+  folderId?: string;
   width?: number;
   height?: number;
   bytes?: number;
+};
+
+export type CloudAlbumPhotoPatch = {
+  takenOn?: string | null;
+  location?: string | null;
+  note?: string | null;
+  folderId?: string | null;
 };
 
 export type CloudPlannedChapterInput = {
@@ -184,6 +216,7 @@ export function mapCloudDailyRecordToDailyRecord(
 export function mapCloudAlbumPhotoToAlbumPhoto(
   row: CloudAlbumPhotoRow,
   photoUrl: string,
+  folderName?: string,
 ): AlbumPhoto {
   return {
     id: row.id,
@@ -191,6 +224,8 @@ export function mapCloudAlbumPhotoToAlbumPhoto(
     date: row.taken_on ?? undefined,
     location: row.location ?? undefined,
     note: row.note ?? undefined,
+    folderId: row.folder_id ?? undefined,
+    folderName,
     createdAt: row.created_at,
     timezone: LA_TIMEZONE,
   };

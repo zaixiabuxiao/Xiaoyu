@@ -6,6 +6,7 @@ This directory holds the Supabase schema and storage setup that will eventually 
 
 - `migrations/001_initial_schema.sql` — initial schema, indexes, storage buckets, the `save_daily_record` RPC, and an RLS lockdown.
 - `migrations/002_auth_membership_rls.sql` — `diary_space_members` table, membership helper functions, application + storage RLS policies, RPC membership check.
+- `migrations/003_memory_folders.sql` — `memory_folders` table for the unified 地图相册 view, `album_photos.folder_id` column with backfill, default "没有地点的照片" folder seed, RLS gated by `is_diary_space_member`.
 
 ## Apply the migrations
 
@@ -53,6 +54,7 @@ Both migrations are **idempotent** (`create … if not exists`, `where not exist
 - `planned_chapters` — composite PK `(diary_space_id, chapter_id)`.
 - `app_settings` — `jsonb` catch-all per space.
 - `diary_space_members` — links Supabase Auth users (`auth.users.id`) to a diary space. Composite PK `(diary_space_id, user_id)`. `role in ('owner', 'member')`.
+- `memory_folders` — folder rows for the 地图相册 view, scoped per diary_space. Unique `(diary_space_id, name)`. `album_photos.folder_id` is a nullable FK with `on delete set null`, so removing a folder preserves its photos under the default folder.
 
 ### Storage buckets (private)
 
@@ -118,7 +120,7 @@ RLS is **ENABLED** on every table.
 
 - `diary_space_members` — `select` allowed when `user_id = auth.uid()`. No insert/update/delete policy.
 - `diary_spaces` — `select` for any member; `update` only for `role = 'owner'`. No insert/delete from clients.
-- `daily_records`, `album_photos`, `planned_chapters`, `app_settings` — `for all` to authenticated members of the relevant `diary_space_id`.
+- `daily_records`, `album_photos`, `planned_chapters`, `app_settings`, `memory_folders` — `for all` to authenticated members of the relevant `diary_space_id`.
 - `daily_record_photos` — same, but the membership check joins through the parent `daily_records` row.
 - `storage.objects` — separate `select / insert / update / delete` policies for `daily-photos` and `album-photos`. The first path segment must be the `diary_space_id` of a space the caller belongs to. Path convention: `{diary_space_id}/{...}`.
 
@@ -162,6 +164,31 @@ A signed-in user who is not in `diary_space_members` for any space gets:
 - `403` / `42501` on inserts and on the `save_daily_record` RPC.
 
 If a select returns more than just the caller's own data, **stop** — there's a policy bug and the gate is leaking.
+
+## Verifying migration 003 (memory folders)
+
+After applying `003_memory_folders.sql`, sanity-check the result from the SQL editor (service-role, bypasses RLS):
+
+```sql
+-- Every diary_space should have at least the default folder.
+select diary_space_id, name from memory_folders order by diary_space_id, name;
+
+-- Every album_photo should now have a folder_id assigned, either to the
+-- location-named folder or to the default 没有地点的照片 folder.
+select id, storage_path, folder_id, taken_on, location, note
+from album_photos
+order by created_at desc
+limit 50;
+
+-- Spot-check that the backfill grouped by location correctly.
+select mf.name as folder, count(ap.id) as photos
+from memory_folders mf
+left join album_photos ap on ap.folder_id = mf.id
+group by mf.name
+order by photos desc, folder;
+```
+
+If you see album_photos rows with `folder_id is null`, run migration 003 again (it is idempotent) — those rows will be moved into the default folder by the third backfill `update`.
 
 ## Security: never expose the service-role key
 

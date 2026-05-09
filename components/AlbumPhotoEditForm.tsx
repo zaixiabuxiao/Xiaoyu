@@ -1,20 +1,15 @@
 "use client";
 
-import {
-  useRef,
-  useState,
-  type ChangeEvent,
-  type FormEvent,
-  type ReactNode,
-} from "react";
-import { fileToCompressedDataURL } from "@/lib/photo-utils";
-import { getOrCreateMemoryFolderByName } from "@/lib/memory-folders";
+import { useState, type FormEvent, type ReactNode } from "react";
+import type { AlbumPhoto } from "@/lib/local-records";
 import { useMemoryFolders } from "@/lib/use-memory-folders";
-import { FolderPickerField } from "./AlbumPhotoEditForm";
+import {
+  getOrCreateMemoryFolderByName,
+  type MemoryFolder,
+} from "@/lib/memory-folders";
 import PixelButton from "./PixelButton";
 
-export type AlbumUploadPayload = {
-  photo: string;
+export type AlbumPhotoEditPayload = {
   date?: string;
   folderId?: string;
   folderName?: string;
@@ -23,50 +18,36 @@ export type AlbumUploadPayload = {
 };
 
 type Props = {
-  onSave: (payload: AlbumUploadPayload) => void;
+  photo: AlbumPhoto;
+  onSave: (payload: AlbumPhotoEditPayload) => void;
   onCancel: () => void;
 };
 
-const PHOTO_MISSING_ERROR = "先选一张照片，我们再把它放进相册。";
-const PHOTO_READ_ERROR = "这张照片读不进来，换一张试试看。";
 const NEW_FOLDER_VALUE = "__new__";
 
-export default function AlbumUploadForm({ onSave, onCancel }: Props) {
+export default function AlbumPhotoEditForm({ photo, onSave, onCancel }: Props) {
   const { folders } = useMemoryFolders();
-  const [photo, setPhoto] = useState<string | undefined>(undefined);
-  const [date, setDate] = useState("");
-  const [folderChoice, setFolderChoice] = useState<string>("");
-  const [newFolderName, setNewFolderName] = useState("");
-  const [location, setLocation] = useState("");
-  const [note, setNote] = useState("");
-  const [photoBusy, setPhotoBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setPhotoBusy(true);
-    try {
-      const dataUrl = await fileToCompressedDataURL(file);
-      setPhoto(dataUrl);
-      if (error === PHOTO_MISSING_ERROR || error === PHOTO_READ_ERROR) {
-        setError(null);
-      }
-    } catch {
-      setError(PHOTO_READ_ERROR);
-    } finally {
-      setPhotoBusy(false);
-    }
-  }
+  const initialFolderId =
+    photo.folderId ??
+    (photo.folderName
+      ? folders.find((f) => f.name === photo.folderName)?.id
+      : photo.location
+        ? folders.find((f) => f.name === photo.location)?.id
+        : undefined);
+
+  const [date, setDate] = useState(photo.date ?? "");
+  const [folderChoice, setFolderChoice] = useState<string>(
+    initialFolderId ?? "",
+  );
+  const [newFolderName, setNewFolderName] = useState("");
+  const [location, setLocation] = useState(photo.location ?? "");
+  const [note, setNote] = useState(photo.note ?? "");
+  const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!photo) {
-      setError(PHOTO_MISSING_ERROR);
-      return;
-    }
+    setError(null);
     let folderId: string | undefined;
     let folderName: string | undefined;
     if (folderChoice === NEW_FOLDER_VALUE) {
@@ -90,9 +71,7 @@ export default function AlbumUploadForm({ onSave, onCancel }: Props) {
         folderName = found.name;
       }
     }
-    setError(null);
     onSave({
-      photo,
       date: date.trim() || undefined,
       folderId,
       folderName,
@@ -105,74 +84,15 @@ export default function AlbumUploadForm({ onSave, onCancel }: Props) {
     <form onSubmit={handleSubmit} className="flex flex-col">
       <header className="pt-1 pb-3 pr-10">
         <p className="font-pixel text-[10px] tracking-widest text-warm-orange">
-          地图相册
+          相册照片
         </p>
         <h2 className="font-display text-[20px] text-navy leading-snug mt-1">
-          放进地图相册
+          编辑这张照片
         </h2>
-        <p className="text-[12px] text-diary-ink-soft mt-1.5 leading-snug">
-          把以前的照片放进对应的回忆地点里。
-          <br />
-          不是每一张照片都要写成长篇故事，留一句也很好。
-        </p>
       </header>
 
       <div className="space-y-4">
-        <Field label="照片" required>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-          {photo ? (
-            <div className="space-y-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photo}
-                alt="选中的照片"
-                className="block w-full max-h-56 object-cover border-3 border-navy bg-cream"
-                style={{ imageRendering: "auto" }}
-              />
-              <div className="flex flex-wrap gap-2">
-                <PixelButton
-                  type="button"
-                  variant="ghost"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {photoBusy ? "更换中…" : "更换照片"}
-                </PixelButton>
-                <PixelButton
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setPhoto(undefined)}
-                >
-                  移除照片
-                </PixelButton>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={photoBusy}
-              className="w-full flex flex-col items-center justify-center gap-2 px-4 py-6 bg-white border-3 border-dashed border-navy text-center disabled:opacity-60"
-            >
-              <span
-                aria-hidden="true"
-                className="w-14 h-14 grid place-items-center bg-cream border-3 border-navy"
-              >
-                <span className="font-pixel text-xl text-navy leading-none">
-                  +
-                </span>
-              </span>
-              <p className="font-display text-[15px] text-navy">
-                {photoBusy ? "正在读取这张照片…" : "选一张以前的照片"}
-              </p>
-            </button>
-          )}
-        </Field>
+        <PreviewBlock photo={photo} />
 
         <Field label="照片日期" optional>
           <input
@@ -218,13 +138,71 @@ export default function AlbumUploadForm({ onSave, onCancel }: Props) {
           </p>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
-          <PixelButton type="submit">放进地图相册</PixelButton>
+          <PixelButton type="submit">保存</PixelButton>
           <PixelButton type="button" variant="ghost" onClick={onCancel}>
-            先不上传
+            取消
           </PixelButton>
         </div>
       </div>
     </form>
+  );
+}
+
+function PreviewBlock({ photo }: { photo: AlbumPhoto }) {
+  return (
+    <div className="space-y-1">
+      <span className="block font-display text-[13px] text-navy">照片</span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={photo.photo}
+        alt="编辑中的照片"
+        className="block w-full max-h-56 object-cover border-3 border-navy bg-cream mt-1.5"
+        style={{ imageRendering: "auto" }}
+      />
+    </div>
+  );
+}
+
+export function FolderPickerField({
+  folders,
+  value,
+  newFolderName,
+  onChange,
+  onChangeNewFolderName,
+}: {
+  folders: MemoryFolder[];
+  value: string;
+  newFolderName: string;
+  onChange: (next: string) => void;
+  onChangeNewFolderName: (next: string) => void;
+}) {
+  return (
+    <Field label="地图文件夹" optional>
+      <div className="space-y-2">
+        <select
+          className="pixel-input"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">没有地点的照片（默认）</option>
+          {folders.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+          <option value={NEW_FOLDER_VALUE}>＋ 新建地图文件夹</option>
+        </select>
+        {value === NEW_FOLDER_VALUE ? (
+          <input
+            className="pixel-input"
+            placeholder="新文件夹名称（如：京都）"
+            value={newFolderName}
+            onChange={(e) => onChangeNewFolderName(e.target.value)}
+            autoFocus
+          />
+        ) : null}
+      </div>
+    </Field>
   );
 }
 

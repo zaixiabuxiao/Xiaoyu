@@ -11,8 +11,7 @@ import { useLocalRecords } from "@/lib/use-local-records";
 import DiaryCard from "./DiaryCard";
 import LocalMemoryCard from "./LocalMemoryCard";
 import MemoryTimelineCard from "./MemoryTimelineCard";
-import MemoryAlbumView from "./MemoryAlbumView";
-import MemoryMapView from "./MemoryMapView";
+import MemoryFolderView from "./MemoryFolderView";
 import YangMascot from "./YangMascot";
 import RecordChapterDialog from "./RecordChapterDialog";
 import RecordChapterForm, { type RecordPayload } from "./RecordChapterForm";
@@ -22,12 +21,11 @@ type Props = {
   mockMemories: LifeChapter[];
 };
 
-type TabId = "timeline" | "album" | "map" | "review";
+type TabId = "timeline" | "folders" | "review";
 
 const tabs: { id: TabId; label: string }[] = [
   { id: "timeline", label: "时间线" },
-  { id: "album", label: "相册" },
-  { id: "map", label: "地图" },
+  { id: "folders", label: "地图相册" },
   { id: "review", label: "年度回顾" },
 ];
 
@@ -70,9 +68,7 @@ export default function MemoriesView({ mockMemories }: Props) {
         />
       ) : null}
 
-      {activeTab === "album" ? <MemoryAlbumView /> : null}
-
-      {activeTab === "map" ? <MemoryMapView /> : null}
+      {activeTab === "folders" ? <MemoryFolderView /> : null}
 
       {activeTab === "review" ? <ReviewPlaceholder /> : null}
 
@@ -183,7 +179,7 @@ function FolderTabs({
   onChange: (id: TabId) => void;
 }) {
   return (
-    <div className="grid grid-cols-4 gap-1 px-1 mb-1">
+    <div className="grid grid-cols-3 gap-1 px-1 mb-1">
       {tabs.map((tab) => {
         const active = tab.id === activeId;
         return (
