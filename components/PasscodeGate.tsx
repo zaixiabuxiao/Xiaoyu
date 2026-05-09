@@ -1,9 +1,11 @@
 "use client";
 
 // Soft private gate for the MVP. This is NOT real authentication — anyone with
-// access to the device's localStorage can read this flag. When we add a real
-// backend, this component should become a thin wrapper around server-side
-// session/auth instead of a localStorage check.
+// access to the device can read the passcode constant in the bundle. The
+// unlocked state lives only in React memory for the current running session,
+// so a page reload, a browser-tab reopen, or a PWA cold start re-locks the
+// app. When we add a real backend, this component should become a thin
+// wrapper around server-side session/auth instead.
 
 import {
   useEffect,
@@ -16,8 +18,8 @@ import {
 import YangMascot from "./YangMascot";
 import DiaryButton from "./DiaryButton";
 import { PixelHeart } from "./PixelIcons";
+import { useAppMusic } from "./AppMusic";
 
-const STORAGE_KEY = "yuyang_diary_unlocked_v1";
 const PASSCODE = "0515";
 const DOOR_DURATION_MS = 1100;
 const WRONG_PASSCODE_ERROR = "不是这一把钥匙。\n再试一次。";
@@ -30,27 +32,13 @@ type Props = {
 
 export default function PasscodeGate({ children }: Props) {
   const [state, setState] = useState<GateState>("locked");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      if (window.localStorage.getItem(STORAGE_KEY) === "1") {
-        setState("unlocked");
-      }
-    } catch {
-      /* ignore quota / privacy mode */
-    }
-  }, []);
+  const music = useAppMusic();
 
   function handleUnlocked() {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      /* ignore */
-    }
     setState("transitioning");
     window.setTimeout(() => {
       setState("unlocked");
+      music.requestPlay();
     }, DOOR_DURATION_MS);
   }
 

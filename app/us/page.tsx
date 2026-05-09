@@ -7,6 +7,7 @@ import CloudAuthCard from "@/components/CloudAuthCardLazy";
 import CloudMigrationCard from "@/components/CloudMigrationCardLazy";
 import VolumeListSection from "@/components/VolumeListSection";
 import DiaryCard from "@/components/DiaryCard";
+import ImportantDatesEditor from "@/components/ImportantDatesEditor";
 import { PixelCalendar } from "@/components/PixelIcons";
 import { relationshipDates } from "@/lib/mock-data";
 import { formatDateForDisplay } from "@/lib/date-utils";
@@ -83,6 +84,11 @@ export default function UsPage() {
             “这些日子，是这本日记最开始的书签。”
           </p>
         </DiaryCard>
+      </section>
+
+      <section>
+        <h2 className="font-pixel text-xs mb-2">重要的日子</h2>
+        <ImportantDatesEditor />
       </section>
 
       <section>
