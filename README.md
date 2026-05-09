@@ -41,7 +41,7 @@ The app currently runs entirely on browser localStorage. Cloud sync via Supabase
 To prepare a future Supabase project, copy `.env.example` to `.env.local` and fill in:
 
 - `NEXT_PUBLIC_SUPABASE_URL` — your Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon (public) key
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — Supabase publishable (browser-safe) key. Older projects can use `NEXT_PUBLIC_SUPABASE_ANON_KEY` instead; either env name is accepted.
 - `NEXT_PUBLIC_CLOUD_ENABLED` — must be the literal string `true` to enable; defaults to `false`
 
 Notes:
