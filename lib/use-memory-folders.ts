@@ -1,31 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import {
-  MEMORY_FOLDERS_EVENT,
-  getMemoryFolders,
-  type MemoryFolder,
-} from "./memory-folders";
+// Phase 9J: thin facade over `useDiaryData` so AlbumUploadForm,
+// AlbumPhotoEditForm, and MemoryFolderView see cloud-backed folders when
+// the user is signed in.
+
+import { useDiaryData } from "./use-diary-data";
 
 export function useMemoryFolders() {
-  const [folders, setFolders] = useState<MemoryFolder[]>([]);
-  const [hydrated, setHydrated] = useState(false);
-
-  const refresh = useCallback(() => {
-    setFolders(getMemoryFolders());
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    setHydrated(true);
-    const handler = () => refresh();
-    window.addEventListener(MEMORY_FOLDERS_EVENT, handler);
-    window.addEventListener("storage", handler);
-    return () => {
-      window.removeEventListener(MEMORY_FOLDERS_EVENT, handler);
-      window.removeEventListener("storage", handler);
-    };
-  }, [refresh]);
-
-  return { folders, hydrated, refresh };
+  const data = useDiaryData();
+  return {
+    folders: data.folders,
+    hydrated: data.hydrated,
+    refresh: data.refresh,
+  };
 }

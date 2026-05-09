@@ -8,8 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { fileToCompressedDataURL } from "@/lib/photo-utils";
-import { getOrCreateMemoryFolderByName } from "@/lib/memory-folders";
-import { useMemoryFolders } from "@/lib/use-memory-folders";
+import { useDiaryData } from "@/lib/use-diary-data";
 import { FolderPickerField } from "./AlbumPhotoEditForm";
 import PixelButton from "./PixelButton";
 
@@ -32,7 +31,8 @@ const PHOTO_READ_ERROR = "这张照片读不进来，换一张试试看。";
 const NEW_FOLDER_VALUE = "__new__";
 
 export default function AlbumUploadForm({ onSave, onCancel }: Props) {
-  const { folders } = useMemoryFolders();
+  const data = useDiaryData();
+  const folders = data.folders;
   const [photo, setPhoto] = useState<string | undefined>(undefined);
   const [date, setDate] = useState("");
   const [folderChoice, setFolderChoice] = useState<string>("");
@@ -61,7 +61,7 @@ export default function AlbumUploadForm({ onSave, onCancel }: Props) {
     }
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!photo) {
       setError(PHOTO_MISSING_ERROR);
@@ -75,14 +75,13 @@ export default function AlbumUploadForm({ onSave, onCancel }: Props) {
         setError("新文件夹名称不能为空。");
         return;
       }
-      try {
-        const created = getOrCreateMemoryFolderByName(trimmed);
-        folderId = created.id;
-        folderName = created.name;
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "新建文件夹出错。");
+      const result = await data.getOrCreateMemoryFolderByName(trimmed);
+      if (!result.ok) {
+        setError(result.message || "新建文件夹出错。");
         return;
       }
+      folderId = result.data.id;
+      folderName = result.data.name;
     } else if (folderChoice) {
       const found = folders.find((f) => f.id === folderChoice);
       if (found) {

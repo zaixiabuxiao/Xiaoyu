@@ -8,6 +8,7 @@ import CloudMigrationCard from "@/components/CloudMigrationCardLazy";
 import VolumeListSection from "@/components/VolumeListSection";
 import DiaryCard from "@/components/DiaryCard";
 import ImportantDatesEditor from "@/components/ImportantDatesEditor";
+import CloudCacheBanner from "@/components/CloudCacheBanner";
 import { PixelCalendar } from "@/components/PixelIcons";
 import { relationshipDates } from "@/lib/mock-data";
 import { formatDateForDisplay } from "@/lib/date-utils";
@@ -128,6 +129,8 @@ export default function UsPage() {
         <h2 className="font-pixel text-xs mb-2">本地数据</h2>
         <LocalDataPanel />
       </section>
+
+      <CloudCacheBanner />
 
       <section>
         <h2 className="font-pixel text-xs mb-2">云端身份</h2>

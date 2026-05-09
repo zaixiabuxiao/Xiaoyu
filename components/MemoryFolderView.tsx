@@ -1,16 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  deleteAlbumPhoto,
-  saveAlbumPhoto,
-  updateAlbumPhoto,
-  type AlbumPhoto,
-  type DailyRecord,
-} from "@/lib/local-records";
+import type { AlbumPhoto, DailyRecord } from "@/lib/local-records";
 import { formatDateForDisplay } from "@/lib/date-utils";
-import { useLocalRecords } from "@/lib/use-local-records";
-import { useMemoryFolders } from "@/lib/use-memory-folders";
+import { useDiaryData } from "@/lib/use-diary-data";
 import { DEFAULT_FOLDER_NAME } from "@/lib/memory-folders";
 import DiaryCard from "./DiaryCard";
 import DiaryButton from "./DiaryButton";
@@ -155,8 +148,8 @@ function bucketize(
 }
 
 export default function MemoryFolderView() {
-  const { records, album, hydrated } = useLocalRecords();
-  const { folders } = useMemoryFolders();
+  const data = useDiaryData();
+  const { records, album, folders, hydrated } = data;
   const [activeFolderKey, setActiveFolderKey] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -186,21 +179,21 @@ export default function MemoryFolderView() {
     ? album.find((p) => p.id === editingPhotoId)
     : undefined;
 
-  function handleUpload(payload: AlbumUploadPayload) {
-    saveAlbumPhoto(payload);
+  async function handleUpload(payload: AlbumUploadPayload) {
+    await data.saveAlbumPhoto(payload);
     setUploadOpen(false);
   }
 
-  function handleEditSave(payload: AlbumPhotoEditPayload) {
+  async function handleEditSave(payload: AlbumPhotoEditPayload) {
     if (!editingPhotoId) return;
-    updateAlbumPhoto(editingPhotoId, payload);
+    await data.updateAlbumPhoto(editingPhotoId, payload);
     setEditingPhotoId(null);
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (typeof window === "undefined") return;
     if (window.confirm("把这张照片从地图相册里取出来吗？")) {
-      deleteAlbumPhoto(id);
+      await data.deleteAlbumPhoto(id);
     }
   }
 

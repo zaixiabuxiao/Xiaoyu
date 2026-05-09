@@ -2,12 +2,8 @@
 
 import { useState } from "react";
 import type { LifeChapter } from "@/lib/mock-data";
-import {
-  getTodayString,
-  saveDailyRecord,
-  DailyRecordExistsError,
-} from "@/lib/local-records";
-import { useLocalRecords } from "@/lib/use-local-records";
+import { getTodayString } from "@/lib/local-records";
+import { useDiaryData } from "@/lib/use-diary-data";
 import DiaryCard from "./DiaryCard";
 import DiaryButton from "./DiaryButton";
 import MemoryThumbnail from "./MemoryThumbnail";
@@ -20,23 +16,27 @@ type Props = {
 };
 
 export default function RecommendedChapterAction({ chapter }: Props) {
-  const { records, hydrated } = useLocalRecords();
+  const data = useDiaryData();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const today = getTodayString();
-  const todayRecord = records.find((r) => r.date === today);
+  const todayRecord = data.records.find((r) => r.date === today);
 
-  function handleSave(payload: RecordPayload) {
-    try {
-      saveDailyRecord(payload);
+  async function handleSave(payload: RecordPayload) {
+    const result = await data.saveDailyRecord(payload);
+    if (result.ok) {
       setOpen(false);
       setError(null);
-    } catch (e) {
-      if (e instanceof DailyRecordExistsError) {
-        setError("今天已经写过一页了，剩下的明天再来。");
-      } else {
-        setError("保存失败，请稍后再试。");
-      }
+      return;
+    }
+    if (result.code === "DAILY_RECORD_EXISTS") {
+      setError("今天已经写过一页了，剩下的明天再来。");
+    } else if (result.code === "PHOTO_REQUIRED") {
+      setError("这一页还缺一张今天的照片。");
+    } else if (result.code === "NOT_AUTHENTICATED") {
+      setError("云端身份断开了，请先重新连接。");
+    } else {
+      setError(result.message || "保存失败，请稍后再试。");
     }
   }
 
@@ -81,7 +81,7 @@ export default function RecommendedChapterAction({ chapter }: Props) {
         </div>
 
         <div className="flex justify-end mt-2.5">
-          {!hydrated ? (
+          {!data.hydrated ? (
             <span className="font-pixel text-[10px] text-navy/50">…</span>
           ) : todayRecord ? (
             <span className="font-display text-[13px] text-diary-ink-soft">
