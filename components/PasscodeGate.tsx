@@ -21,7 +21,10 @@ import { PixelHeart } from "./PixelIcons";
 import { useAppMusic } from "./AppMusic";
 
 const PASSCODE = "0515";
-const DOOR_DURATION_MS = 1100;
+// Door animation length (ms). Must match the CSS keyframes in
+// app/globals.css §diary-door-left / -right / -text. Lengthened in 9L.1
+// for a softer entry feel.
+const DOOR_DURATION_MS = 2000;
 const WRONG_PASSCODE_ERROR = "不是这一把钥匙。\n再试一次。";
 
 type GateState = "locked" | "transitioning" | "unlocked";
@@ -35,10 +38,13 @@ export default function PasscodeGate({ children }: Props) {
   const music = useAppMusic();
 
   function handleUnlocked() {
+    // Trigger music synchronously inside the click handler so iOS Safari
+    // recognises the user gesture and `audio.play()` resolves. Then run
+    // the door animation; when it ends, swap to the unlocked tree.
+    music.requestPlay();
     setState("transitioning");
     window.setTimeout(() => {
       setState("unlocked");
-      music.requestPlay();
     }, DOOR_DURATION_MS);
   }
 
