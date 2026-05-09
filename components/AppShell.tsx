@@ -3,6 +3,7 @@ import BottomNav from "./BottomNav";
 import PasscodeGate from "./PasscodeGate";
 import { AppMusicProvider } from "./AppMusic";
 import MusicPlayer from "./MusicPlayer";
+import RefreshButton from "./RefreshButton";
 import { DiaryDataProvider } from "@/lib/use-diary-data";
 
 type Props = {
@@ -18,6 +19,7 @@ export default function AppShell({ children }: Props) {
             <main className="mx-auto max-w-md px-4 pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
               {children}
             </main>
+            <RefreshButton />
             <MusicPlayer />
             <BottomNav />
           </div>
