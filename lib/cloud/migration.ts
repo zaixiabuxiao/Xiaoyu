@@ -27,6 +27,8 @@ import {
 import { getCloudDiarySpace } from "./diary-space";
 import { saveCloudDailyRecord } from "./daily-records";
 import { addCloudPlannedChapter } from "./planned-chapters";
+import { getOrCreateCloudMemoryFolder } from "./memory-folders";
+import { DEFAULT_FOLDER_NAME } from "../memory-folders";
 import {
   ALBUM_PHOTOS_BUCKET,
   DAILY_PHOTOS_BUCKET,
@@ -436,6 +438,31 @@ async function migrateOneAlbumPhoto(
     return "skipped";
   }
 
+  // Phase 9H: resolve the cloud folder for this photo before uploading.
+  // Precedence: explicit folderName > legacy location > default folder.
+  // Failure to resolve the folder is non-fatal — we fall back to null
+  // folder_id and rely on the application treating null as the default.
+  let folderId: string | null = null;
+  const folderName =
+    photo.folderName?.trim() ||
+    photo.location?.trim() ||
+    DEFAULT_FOLDER_NAME;
+  const folderResult = await getOrCreateCloudMemoryFolder(
+    ctx.diarySpaceId,
+    folderName,
+  );
+  if (folderResult.ok) {
+    folderId = folderResult.data.id;
+  } else {
+    recordError(
+      errors,
+      folderResult.code,
+      `相册照片文件夹「${folderName}」处理失败，照片仍会上传但暂无文件夹。`,
+      photo.id,
+      folderResult.cause,
+    );
+  }
+
   const storagePath = `${ctx.diarySpaceId}/${cloudId}.jpg`;
 
   let blob: Blob;
@@ -493,6 +520,7 @@ async function migrateOneAlbumPhoto(
           taken_on: photo.date ?? null,
           location: photo.location ?? null,
           note: photo.note ?? null,
+          folder_id: folderId,
           created_at: photo.createdAt,
         },
         { onConflict: "id", ignoreDuplicates: true },
