@@ -475,17 +475,30 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
     window.addEventListener(STORAGE_EVENTS.planned, refresh);
     window.addEventListener(STORAGE_EVENTS.album, refresh);
     window.addEventListener(MEMORY_FOLDERS_EVENT, refresh);
-    window.addEventListener(IMPORTANT_DATES_EVENT, refresh);
     window.addEventListener("storage", refresh);
     return () => {
       window.removeEventListener(STORAGE_EVENTS.records, refresh);
       window.removeEventListener(STORAGE_EVENTS.planned, refresh);
       window.removeEventListener(STORAGE_EVENTS.album, refresh);
       window.removeEventListener(MEMORY_FOLDERS_EVENT, refresh);
-      window.removeEventListener(IMPORTANT_DATES_EVENT, refresh);
       window.removeEventListener("storage", refresh);
     };
   }, [cloudActive]);
+
+  // Important dates: always listen — including in cache mode and across
+  // browser tabs — so BrandSummaryCard on /home updates the moment
+  // ImportantDatesEditor on /us writes localStorage.
+  useEffect(() => {
+    const refreshDates = () => {
+      setImportantDates(getImportantDates());
+    };
+    window.addEventListener(IMPORTANT_DATES_EVENT, refreshDates);
+    window.addEventListener("storage", refreshDates);
+    return () => {
+      window.removeEventListener(IMPORTANT_DATES_EVENT, refreshDates);
+      window.removeEventListener("storage", refreshDates);
+    };
+  }, []);
 
   // ── Mutations ──────────────────────────────────────────────────────────
 
@@ -949,6 +962,10 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
           message: e instanceof Error ? e.message : "保存日历时出错了。",
         };
       }
+      // Apply the new local snapshot to provider state immediately so that
+      // BrandSummaryCard on /home (and any other consumer) re-renders the
+      // moment the editor returns, before any cloud round-trip.
+      setImportantDates(getImportantDates());
       if (!cloudActive || !diarySpaceId) {
         return { ok: true, data: created, source: "local" };
       }
@@ -986,6 +1003,8 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
           message: "找不到这一条日子。",
         };
       }
+      // Instant local-state update — see addImportantDateFn note.
+      setImportantDates(getImportantDates());
       if (!cloudActive || !diarySpaceId) {
         return { ok: true, data: updated, source: "local" };
       }
@@ -1018,6 +1037,8 @@ export function DiaryDataProvider({ children }: { children: ReactNode }) {
       if (!localOk) {
         return { ok: true, data: false, source: "local" };
       }
+      // Instant local-state update — see addImportantDateFn note.
+      setImportantDates(getImportantDates());
       if (!cloudActive || !diarySpaceId) {
         return { ok: true, data: true, source: "local" };
       }
